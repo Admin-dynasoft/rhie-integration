@@ -2,19 +2,28 @@
 
 ## Config File Location
 
-Default: `configs/platform.yaml`
+Default: `configs/platform.yaml` at the repository root (resolved automatically).
 
 Override with environment variable:
 
 ```bash
-export CONFIG_PATH=/path/to/custom-config.yaml
+export PLATFORM_CONFIG=/path/to/custom-config.yaml
+# or repo-root-relative:
+export PLATFORM_CONFIG=configs/platform.staging.yaml
+```
+
+Legacy override (still supported):
+
+```bash
+export CONFIG_PATH=configs/platform.yaml
 ```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `CONFIG_PATH` | Path to platform config file |
+| `PLATFORM_CONFIG` | Absolute or repo-root-relative path to platform config file |
+| `CONFIG_PATH` | Legacy path override (absolute, repo-root-relative, or cwd-relative) |
 | `LOG_LEVEL` | Override log level (`info`, `debug`, etc.) |
 | `RHIE_BASE_URL` | Override RHIE API base URL |
 | `LOCAL_DB_HOST` | Override local database host |

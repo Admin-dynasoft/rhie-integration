@@ -10,7 +10,6 @@ module.exports = {
       max_memory_restart: '256M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
       },
     },
     {
@@ -23,7 +22,6 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
         SERVICE_NAME: 'client-registry-host',
         WORKER_TYPES: 'client-registry',
         HEALTH_PORT: '9091',
@@ -39,7 +37,6 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
         SERVICE_NAME: 'encounter-id-host',
         WORKER_TYPES: 'encounter-id',
         HEALTH_PORT: '9092',
@@ -55,7 +52,6 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
         SERVICE_NAME: 'visit-encounter-host',
         WORKER_TYPES: 'visit-encounter',
         HEALTH_PORT: '9093',
@@ -71,7 +67,6 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
         SERVICE_NAME: 'transfer-encounter-host',
         WORKER_TYPES: 'transfer-encounter',
         HEALTH_PORT: '9094',
@@ -87,7 +82,6 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        CONFIG_PATH: '../../configs/platform.yaml',
         SERVICE_NAME: 'observation-host',
         WORKER_TYPES: 'observation',
         HEALTH_PORT: '9095',

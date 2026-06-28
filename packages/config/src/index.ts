@@ -5,6 +5,10 @@ export {
   getEnabledOnlineDatabases,
   getDatabaseById,
   getLocalDatabase,
+  resolvePlatformConfigPath,
+  resolveRepositoryRoot,
+  getDefaultPlatformConfigPath,
+  resetRepositoryRootCache,
 } from './loader.js';
 
 export type {

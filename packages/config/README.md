@@ -14,11 +14,12 @@ Centralized configuration loading and validation for the integration platform.
 
 ## Workflow
 
-1. Read config file from `CONFIG_PATH` or default `./configs/platform.yaml`
-2. Parse YAML/JSON
-3. Substitute environment variables
-4. Validate against `PlatformConfigSchema`
-5. Cache validated config for runtime access
+1. Resolve repository root automatically (from the config package location or `process.cwd()`)
+2. Read config from `PLATFORM_CONFIG`, legacy `CONFIG_PATH`, or `configs/platform.yaml` at the repository root
+3. Parse YAML/JSON
+4. Substitute environment variables
+5. Validate against `PlatformConfigSchema`
+6. Cache validated config for runtime access
 
 ## Configuration
 

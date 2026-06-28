@@ -8,8 +8,18 @@ import {
   type DatabaseConfig,
   type OnlineDatabaseConfig,
 } from './types.js';
+import {
+  resolvePlatformConfigPath,
+  resolveRepositoryRoot,
+} from './paths.js';
 
 export * from './types.js';
+export {
+  resolvePlatformConfigPath,
+  resolveRepositoryRoot,
+  getDefaultPlatformConfigPath,
+  resetRepositoryRootCache,
+} from './paths.js';
 
 let cachedConfig: PlatformConfig | null = null;
 
@@ -58,9 +68,15 @@ function applyEnvOverrides(raw: Record<string, unknown>): Record<string, unknown
   return result;
 }
 
-function resolveConfigPath(configPath?: string): string {
-  const envPath = configPath ?? process.env.CONFIG_PATH ?? './configs/platform.yaml';
-  return resolve(process.cwd(), envPath);
+function loadEnvironmentFiles(): void {
+  try {
+    const repositoryRoot = resolveRepositoryRoot();
+    loadDotenv({ path: resolve(repositoryRoot, '.env') });
+  } catch {
+    // Repository root is resolved again when loading config.
+  }
+
+  loadDotenv();
 }
 
 export function loadConfig(configPath?: string): PlatformConfig {
@@ -68,9 +84,9 @@ export function loadConfig(configPath?: string): PlatformConfig {
     return cachedConfig;
   }
 
-  loadDotenv();
+  loadEnvironmentFiles();
 
-  const resolvedPath = resolveConfigPath(configPath);
+  const resolvedPath = resolvePlatformConfigPath(configPath);
 
   if (!existsSync(resolvedPath)) {
     throw new Error(`Configuration file not found: ${resolvedPath}`);
