@@ -27,6 +27,8 @@ coordinator:
   stateFilePath: ./data/coordinator-state.json
   autoRestartFailedWorkers: true
   healthPollIntervalMs: 30000
+  replicationMonitorStatusUrl: http://127.0.0.1:9088/replication/status
+  replicationMonitorTimeoutMs: 5000
   workerHostEndpoints:
     - name: client-registry-host
       healthUrl: http://127.0.0.1:9091/health
@@ -71,6 +73,18 @@ encounterId:
   executionMode: shadow
   generateFromDate: "2026-06-24"
   transferGenerateFromDate: "2026-06-20"
+
+integrationState:
+  autoMigrate: true
+  maxRetries: 3
+  deadLetterAfterRetries: 5
+
+replicationMonitor:
+  pollIntervalMs: 10000
+  maxLagSeconds: 30
+  healthPort: 9088
+  treatNonReplicaAsHealthy: true
+  preferLocalOnLag: true
 
 localDatabase:
   id: local-primary

@@ -1,0 +1,26 @@
+{
+  "name": "@rhie/integration-state",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "test": "node --import tsx --test src/idempotency.test.ts src/store/integration-state.store.test.ts"
+  },
+  "dependencies": {
+    "@rhie/config": "*",
+    "@rhie/database": "*",
+    "@rhie/logger": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

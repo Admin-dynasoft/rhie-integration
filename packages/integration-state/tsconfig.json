@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "references": [
+    { "path": "../config" },
+    { "path": "../database" },
+    { "path": "../logger" }
+  ],
+  "include": ["src/**/*"]
+}

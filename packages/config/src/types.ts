@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { ClientRegistryConfigSchema } from './client-registry.js';
 import { EncounterIdConfigSchema } from './encounter-id.js';
+import { IntegrationStateConfigSchema } from './integration-state.js';
+import { ReplicationMonitorConfigSchema } from './replication-monitor.js';
 
 export const DatabaseConfigSchema = z.object({
   id: z.string().min(1),
@@ -104,6 +106,11 @@ export const CoordinatorConfigSchema = z.object({
     .default([]),
   autoRestartFailedWorkers: z.boolean().default(true),
   healthPollIntervalMs: z.number().int().positive().default(30000),
+  replicationMonitorStatusUrl: z
+    .string()
+    .url()
+    .default('http://127.0.0.1:9088/replication/status'),
+  replicationMonitorTimeoutMs: z.number().int().positive().default(5000),
 });
 
 export type CoordinatorConfig = z.infer<typeof CoordinatorConfigSchema>;
@@ -131,6 +138,8 @@ export const PlatformConfigSchema = z.object({
   rhie: RhieConfigSchema,
   clientRegistry: ClientRegistryConfigSchema.default({}),
   encounterId: EncounterIdConfigSchema.default({}),
+  integrationState: IntegrationStateConfigSchema.default({}),
+  replicationMonitor: ReplicationMonitorConfigSchema.default({}),
   localDatabase: LocalDatabaseConfigSchema,
   onlineDatabases: z.array(OnlineDatabaseConfigSchema).default([]),
 });
@@ -143,11 +152,26 @@ export type { ClientRegistryConfig, ClientRegistryExecutionMode } from './client
 export { ClientRegistryConfigSchema } from './client-registry.js';
 export type { EncounterIdConfig, EncounterIdExecutionMode } from './encounter-id.js';
 export { EncounterIdConfigSchema } from './encounter-id.js';
+export type { IntegrationStateConfig } from './integration-state.js';
+export { IntegrationStateConfigSchema } from './integration-state.js';
+export type { ReplicationMonitorConfig } from './replication-monitor.js';
+export { ReplicationMonitorConfigSchema } from './replication-monitor.js';
+
+export type ReplicationHealthStatus =
+  | 'healthy'
+  | 'degraded'
+  | 'unhealthy'
+  | 'unknown'
+  | 'not_replica';
 
 export interface FacilityProcessingState {
   facilityId: string;
   mode: ProcessingMode;
   onlineAvailable: boolean;
+  localAvailable?: boolean;
+  replicationHealthy?: boolean;
+  replicationLagSeconds?: number | null;
+  replicationStatus?: ReplicationHealthStatus;
   lastSyncCheck: string;
   reason?: string;
 }

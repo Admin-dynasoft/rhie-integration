@@ -1,6 +1,18 @@
 module.exports = {
   apps: [
     {
+      name: 'rhie-replication-monitor',
+      cwd: './apps/replication-monitor',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '256M',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
+    {
       name: 'rhie-coordinator',
       cwd: './apps/coordinator',
       script: 'dist/index.js',

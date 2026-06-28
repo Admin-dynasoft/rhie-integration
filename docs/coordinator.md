@@ -13,24 +13,31 @@ The `@rhie/coordinator` app is the orchestration brain of the platform. It does 
 
 ## Processing Mode Logic
 
+The coordinator uses **database connectivity pings** plus **replication health from the Replication Monitor** (`/replication/status`). The coordinator does not query MySQL replication directly.
+
 ```mermaid
 flowchart TD
-    START[Health check cycle] --> LOCAL{Local DB OK?}
+    START[Health check cycle] --> REP[Poll Replication Monitor]
+    REP --> LOCAL{Local DB OK?}
     LOCAL -->|No| ONLINE_ONLY{Any online DB OK?}
-    ONLINE_ONLY -->|Yes| FAC_ONLINE[Facility mode: online]
-    ONLINE_ONLY -->|No| STANDBY[Global mode: standby]
+    ONLINE_ONLY -->|Yes| STANDBY[Facility mode: standby]
+    ONLINE_ONLY -->|No| STANDBY2[Global mode: standby]
 
     LOCAL -->|Yes| ONLINE{Online DB OK?}
-    ONLINE -->|Yes| FAC_ONLINE
     ONLINE -->|No| FAC_LOCAL[Facility mode: local]
+    ONLINE -->|Yes| REPL{Replication healthy?}
+    REPL -->|Yes| FAC_ONLINE[Facility mode: online]
+    REPL -->|No| FAC_LOCAL
 ```
 
 | Condition | Mode |
 |-----------|------|
-| Local OK + Online OK | `online` |
-| Local OK + Online down | `local` |
-| Online OK + Local down | `online` |
+| Local OK + Online OK + Replication healthy | `online` |
+| Local OK + (Online down OR replication unhealthy) | `local` |
+| Online OK + Local down | `standby` |
 | Both down | `standby` |
+
+See [Replication Monitor](replication-monitor.md) for monitor configuration.
 
 ## Worker Host Monitoring
 

@@ -32,10 +32,15 @@ export type {
   ClientRegistryExecutionMode,
   EncounterIdConfig,
   EncounterIdExecutionMode,
+  IntegrationStateConfig,
+  ReplicationMonitorConfig,
+  ReplicationHealthStatus,
 } from './types.js';
 
 export { ClientRegistryConfigSchema } from './client-registry.js';
 export { EncounterIdConfigSchema } from './encounter-id.js';
+export { IntegrationStateConfigSchema } from './integration-state.js';
+export { ReplicationMonitorConfigSchema } from './replication-monitor.js';
 
 export {
   PlatformConfigSchema,

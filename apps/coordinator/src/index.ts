@@ -3,11 +3,13 @@ import { dirname, resolve } from 'node:path';
 import axios from 'axios';
 import {
   loadConfig,
+  resolveRepositoryRoot,
   type CoordinatorState,
   type FacilityProcessingState,
   type ProcessingMode,
   type WorkerHostHealthState,
 } from '@rhie/config';
+import type { ReplicationMonitorSnapshot } from '@rhie/replication-monitor';
 import { createLogger } from '@rhie/logger';
 import { MultiDatabaseManager } from '@rhie/worker-framework';
 import { HealthHttpServer, globalHealthRegistry } from '@rhie/health';
@@ -25,6 +27,7 @@ export class PlatformCoordinator {
   private readonly shutdownManager = new GracefulShutdownManager(this.logger);
   private running = false;
   private lastSyncHealth: SyncHealthResult = { localOk: false, onlineStatus: {} };
+  private lastReplicationSnapshot: ReplicationMonitorSnapshot | null = null;
   private lastWorkerHostHealth: Record<string, WorkerHostHealthState> = {};
   private healthServer: HealthHttpServer | null = null;
 
@@ -41,6 +44,7 @@ export class PlatformCoordinator {
         registry: globalHealthRegistry,
         getWorkerMetrics: () => ({
           syncHealth: this.lastSyncHealth,
+          replication: this.lastReplicationSnapshot,
           workerHosts: this.lastWorkerHostHealth,
         }),
       });
@@ -70,9 +74,13 @@ export class PlatformCoordinator {
 
   private async evaluateAndPersist(): Promise<void> {
     this.lastSyncHealth = await this.checkSyncHealth();
+    this.lastReplicationSnapshot = await this.pollReplicationMonitor();
     this.lastWorkerHostHealth = await this.pollWorkerHosts();
 
-    const facilities = this.computeFacilityModes(this.lastSyncHealth);
+    const facilities = this.computeFacilityModes(
+      this.lastSyncHealth,
+      this.lastReplicationSnapshot,
+    );
     const globalMode = this.computeGlobalMode(facilities, this.lastSyncHealth.localOk);
 
     const state: CoordinatorState = {
@@ -90,23 +98,38 @@ export class PlatformCoordinator {
         globalMode,
         facilityCount: Object.keys(facilities).length,
         workerHosts: Object.keys(this.lastWorkerHostHealth).length,
+        replicationHealthy: this.lastReplicationSnapshot?.globalHealthy,
       },
       'Coordinator state updated',
     );
   }
 
-  private computeFacilityModes(syncHealth: SyncHealthResult): Record<string, FacilityProcessingState> {
+  private computeFacilityModes(
+    syncHealth: SyncHealthResult,
+    replication: ReplicationMonitorSnapshot | null,
+  ): Record<string, FacilityProcessingState> {
     const facilities: Record<string, FacilityProcessingState> = {};
+    const preferLocalOnLag = this.config.replicationMonitor.preferLocalOnLag;
 
     for (const db of this.config.onlineDatabases.filter((d) => d.enabled)) {
-      const onlineAvailable = syncHealth.onlineStatus[db.id] ?? false;
+      const replFacility = replication?.facilities[db.facilityCode];
+      const localOk = replFacility?.localReachable ?? syncHealth.localOk;
+      const onlineOk = replFacility?.onlineReachable ?? (syncHealth.onlineStatus[db.id] ?? false);
+      const replicationHealthy = replFacility?.healthy ?? (replication == null ? true : false);
+      const replicationLag = replFacility?.lagSeconds ?? null;
+      const replicationStatus = replFacility?.status;
+
       let mode: ProcessingMode;
 
-      if (onlineAvailable && syncHealth.localOk) {
+      if (!localOk && !onlineOk) {
+        mode = 'standby';
+      } else if (!localOk && onlineOk) {
+        mode = 'standby';
+      } else if (localOk && onlineOk && replicationHealthy) {
         mode = 'online';
-      } else if (!onlineAvailable && syncHealth.localOk) {
+      } else if (localOk && (!onlineOk || (preferLocalOnLag && !replicationHealthy))) {
         mode = 'local';
-      } else if (onlineAvailable) {
+      } else if (onlineOk) {
         mode = 'online';
       } else {
         mode = 'standby';
@@ -115,9 +138,19 @@ export class PlatformCoordinator {
       facilities[db.facilityCode] = {
         facilityId: db.facilityCode,
         mode,
-        onlineAvailable,
+        onlineAvailable: onlineOk,
+        localAvailable: localOk,
+        replicationHealthy,
+        replicationLagSeconds: replicationLag,
+        replicationStatus,
         lastSyncCheck: new Date().toISOString(),
-        reason: this.buildModeReason(mode, onlineAvailable, syncHealth.localOk),
+        reason: this.buildModeReason(mode, {
+          onlineOk,
+          localOk,
+          replicationHealthy,
+          replicationLag,
+          replicationStatus,
+        }),
       };
     }
 
@@ -128,20 +161,41 @@ export class PlatformCoordinator {
     facilities: Record<string, FacilityProcessingState>,
     localOk: boolean,
   ): ProcessingMode {
-    const onlineAvailableCount = Object.values(facilities).filter((f) => f.onlineAvailable).length;
-    if (onlineAvailableCount > 0 && localOk) return 'online';
-    if (localOk) return 'local';
+    const modes = Object.values(facilities).map((f) => f.mode);
+    if (modes.includes('online')) return 'online';
+    if (modes.includes('local') && localOk) return 'local';
     return 'standby';
   }
 
-  private buildModeReason(mode: ProcessingMode, onlineAvailable: boolean, localOk: boolean): string {
+  private buildModeReason(
+    mode: ProcessingMode,
+    ctx: {
+      onlineOk: boolean;
+      localOk: boolean;
+      replicationHealthy: boolean;
+      replicationLag: number | null;
+      replicationStatus?: string;
+    },
+  ): string {
     switch (mode) {
       case 'online':
-        return 'Online database available — online workers active';
+        return 'Online DB available with healthy replication — online workers active';
       case 'local':
-        return onlineAvailable ? 'Fallback' : 'Online unavailable — local workers active';
+        if (!ctx.onlineOk) {
+          return 'Online unavailable — local workers active';
+        }
+        if (!ctx.replicationHealthy) {
+          return `Replication ${ctx.replicationStatus ?? 'unhealthy'} (lag ${ctx.replicationLag ?? 'unknown'}s) — local workers active`;
+        }
+        return 'Local workers active';
       case 'standby':
-        return localOk ? 'Waiting for online recovery' : 'All databases unavailable';
+        if (!ctx.localOk && !ctx.onlineOk) {
+          return 'All databases unavailable';
+        }
+        if (!ctx.localOk) {
+          return 'Local database unavailable — cannot verify clinical source';
+        }
+        return 'Waiting for database or replication recovery';
       default:
         return '';
     }
@@ -174,6 +228,27 @@ export class PlatformCoordinator {
     }
 
     return { localOk: pingResults[this.config.localDatabase.id] ?? localOk, onlineStatus };
+  }
+
+  private async pollReplicationMonitor(): Promise<ReplicationMonitorSnapshot | null> {
+    const url = this.config.coordinator.replicationMonitorStatusUrl;
+
+    try {
+      const response = await axios.get<ReplicationMonitorSnapshot>(url, {
+        timeout: this.config.coordinator.replicationMonitorTimeoutMs,
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.warn(
+        {
+          event: 'replication_monitor_unreachable',
+          url,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Replication monitor unreachable — falling back to connectivity-only mode decisions',
+      );
+      return null;
+    }
   }
 
   private async pollWorkerHosts(): Promise<Record<string, WorkerHostHealthState>> {
@@ -244,7 +319,7 @@ export class PlatformCoordinator {
   }
 
   private persistState(state: CoordinatorState): void {
-    const statePath = resolve(process.cwd(), this.config.coordinator.stateFilePath);
+    const statePath = resolve(resolveRepositoryRoot(), this.config.coordinator.stateFilePath);
     const dir = dirname(statePath);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });

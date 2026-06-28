@@ -1,6 +1,6 @@
 {
-  "name": "@rhie/coordinator",
-  "version": "0.2.0",
+  "name": "@rhie/replication-monitor-app",
+  "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",
   "scripts": {
@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@rhie/config": "*",
+    "@rhie/database": "*",
     "@rhie/health": "*",
     "@rhie/logger": "*",
     "@rhie/replication-monitor": "*",
-    "@rhie/worker-framework": "*",
-    "axios": "^1.7.9"
+    "@rhie/worker-framework": "*"
   }
 }

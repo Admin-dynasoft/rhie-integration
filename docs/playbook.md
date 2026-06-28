@@ -251,3 +251,26 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 
 **Rationale:** Matches `generate_encounters_batch.php` orchestration. Splitting generators across workers would require new coordination and change production behaviour.
 
+---
+
+## ADR-035: Integration State Layer (Phase 4.5)
+
+**Decision:** Introduce `@rhie/integration-state` with dedicated tables on the Local database. Existing `rhie_status` and `upid_patients.status` writes remain unchanged until service migration.
+
+**Rationale:** Separates RHIE sync metadata from Medisoft business tables. Enables idempotency, audit trail, and replication-safe metadata on Local master.
+
+---
+
+## ADR-036: Dedicated Replication Monitor Service (Phase 4.5)
+
+**Decision:** MySQL replication probing lives in `apps/replication-monitor`. Coordinator polls `/replication/status`; it does not run `SHOW REPLICA STATUS` directly.
+
+**Rationale:** Single responsibility, reusable snapshot, testable probe logic in `@rhie/replication-monitor`.
+
+---
+
+## ADR-037: Replication-Aware Coordinator Mode (Phase 4.5)
+
+**Decision:** Facility mode considers replication health and lag from Replication Monitor. Unhealthy replication with `preferLocalOnLag: true` activates local workers.
+
+**Rationale:** Prevents processing stale Online replica data under Local → Online replication.

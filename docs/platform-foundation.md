@@ -16,12 +16,15 @@ Phase 2.5 builds the reusable infrastructure that all RHIE services share.
 | `@rhie/retry` | Exponential backoff, permanent vs temporary failures |
 | `@rhie/shared` | Legacy Phase 1 compatibility layer |
 | `@rhie/monitoring` | Phase 1 health monitor (still used by legacy apps) |
+| `@rhie/integration-state` | RHIE sync metadata — idempotency, history, dead letters (Phase 4.5) |
+| `@rhie/replication-monitor` | MySQL replication probe and snapshot types (Phase 4.5) |
 
 ## App Map
 
 | App | Purpose |
 |-----|---------|
 | `apps/coordinator` | Platform orchestration — mode decisions, health polling |
+| `apps/replication-monitor` | MySQL replication health — publishes status for coordinator |
 | `apps/worker-host` | Generic worker runner — loads service workers from registry |
 | `apps/*-service` | Legacy Phase 1 stubs (deprecated — use worker-host) |
 
