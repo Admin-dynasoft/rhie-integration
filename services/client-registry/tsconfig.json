@@ -4,6 +4,13 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "references": [{ "path": "../../packages/worker-framework" }],
+  "references": [
+    { "path": "../../packages/config" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/logger" },
+    { "path": "../../packages/rhie-client" },
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/worker-framework" }
+  ],
   "include": ["src/**/*"]
 }

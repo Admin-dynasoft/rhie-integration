@@ -192,9 +192,25 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 
 ---
 
-## ADR-025: Database Auto-Reconnect (Phase 2.5)
+## ADR-026: Client Registry Shadow Mode (Phase 3)
 
-**Decision:** `DatabaseConnection` detects connection errors and automatically reconnects before retrying the failed query.
+**Decision:** Client Registry supports `executionMode: shadow | production` in platform config.
 
-**Rationale:** Long-running workers must survive transient MySQL disconnections without manual restart.
+**Rationale:** Enables payload validation against PHP output before enabling HIE uploads and database writes. Default is `shadow` for safe deployment.
+
+---
+
+## ADR-027: Single-Attempt HIE Upload for Client Registry (Phase 3)
+
+**Decision:** Client Registry uses `uploadClientRegistryOnce()` — one HTTP POST, no retry. Success only on HTTP 200 or 201.
+
+**Rationale:** PHP `sendToHIE()` performs a single cURL request with no retry logic. Using the generic RhieClient retry wrapper would change production behaviour.
+
+---
+
+## ADR-028: Preserve patient_id / client_id PHP Ambiguity (Phase 3)
+
+**Decision:** Batch selection returns `patient_id`; UPID lookup queries `client_id` with the same integer value, matching PHP exactly.
+
+**Rationale:** Documented ambiguity in Phase 2 analysis. Changing either column would alter which records are processed.
 

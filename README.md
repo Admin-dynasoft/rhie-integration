@@ -8,8 +8,9 @@ Autonomous background services that synchronize data between Medisoft MySQL data
 |-------|--------|
 | Phase 1 | Complete — project structure, shared libraries, stub services |
 | Phase 2a | Complete — Client Registry PHP reverse-engineering |
-| **Phase 2.5** | **Complete — reusable platform foundation** |
-| Phase 3 | Next — Client Registry business logic implementation |
+| Phase 2.5 | Complete — reusable platform foundation |
+| **Phase 3** | **Complete — Client Registry service (shadow + production modes)** |
+| Phase 4 | Next — Encounter ID service |
 
 ## Quick Start
 

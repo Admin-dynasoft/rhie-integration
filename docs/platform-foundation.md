@@ -29,7 +29,7 @@ Phase 2.5 builds the reusable infrastructure that all RHIE services share.
 
 | Service | Worker Type | Status |
 |---------|-------------|--------|
-| `services/client-registry` | `client-registry` | Stub (no business logic) |
+| `services/client-registry` | `client-registry` | **Implemented** (shadow + production) |
 | `services/encounter-id` | `encounter-id` | Stub |
 | `services/visit-encounter` | `visit-encounter` | Stub |
 | `services/transfer-encounter` | `transfer-encounter` | Stub |

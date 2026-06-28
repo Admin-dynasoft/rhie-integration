@@ -1,21 +1,5 @@
-import {
-  StubWorker,
-  type WorkerDependencies,
-  type WorkerFactory,
-  type WorkerIdentity,
-} from '@rhie/worker-framework';
-
-class ClientRegistryWorker extends StubWorker {
-  get workerType(): string {
-    return 'client-registry';
-  }
-}
-
-export const clientRegistryWorkerFactory: WorkerFactory = {
-  workerType: 'client-registry',
-  create(deps: WorkerDependencies, identity: WorkerIdentity) {
-    return new ClientRegistryWorker(deps, identity);
-  },
-};
-
-export { ClientRegistryWorker };
+export { clientRegistryWorkerFactory, ClientRegistryWorker } from './worker/client-registry.worker.js';
+export { ClientRegistryProcessor } from './domain/client-registry.processor.js';
+export { PatientPayloadBuilder, buildPatientPayload, serializePatientPayload } from './domain/patient-payload.builder.js';
+export { ClientRegistryRepository } from './repository/client-registry.repository.js';
+export type { PatientDataRow, FhirPatientPayload, UpidStatus } from './domain/types.js';

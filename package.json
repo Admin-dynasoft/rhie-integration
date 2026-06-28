@@ -11,6 +11,8 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist services/*/dist",
+    "test": "npm run test -w @rhie/service-client-registry",
+    "test:client-registry": "npm run test -w @rhie/service-client-registry",
     "dev:coordinator": "npm run start -w @rhie/coordinator",
     "dev:worker-host": "npm run start -w @rhie/worker-host",
     "dev:client-host": "SERVICE_NAME=client-registry-host WORKER_TYPES=client-registry HEALTH_PORT=9091 npm run start -w @rhie/worker-host",
