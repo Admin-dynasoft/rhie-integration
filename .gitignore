@@ -4,6 +4,7 @@ dist/
 .env
 .env.local
 .env.*.local
+data/discovered-environment.json
 *.log
 .DS_Store
 coverage/

@@ -37,7 +37,7 @@ export class WorkerHost {
   constructor(private readonly options: WorkerHostOptions) {}
 
   async start(): Promise<void> {
-    this.config = this.options.platformConfig ?? loadConfig();
+    this.config = this.options.platformConfig ?? await loadConfig();
     this.logger = createLogger({ service: this.options.serviceName }, this.config.logging);
 
     this.logger.info({ event: 'worker_host_start' }, `${this.options.serviceName} worker host starting`);

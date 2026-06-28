@@ -1,7 +1,7 @@
 import {
-  getConfig,
+  loadConfig,
   getEnabledOnlineDatabases,
-  type ReplicationMonitorConfig,
+  type PlatformConfig,
 } from '@rhie/config';
 import { DatabaseManager } from '@rhie/database';
 import { createLogger } from '@rhie/logger';
@@ -18,14 +18,23 @@ import { GracefulShutdownManager } from '@rhie/worker-framework';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 export class ReplicationMonitorService {
-  private readonly config = getConfig();
-  private readonly monitorConfig: ReplicationMonitorConfig = this.config.replicationMonitor;
-  private readonly logger = createLogger({ service: 'replication-monitor' }, this.config.logging);
-  private readonly dbManager = new DatabaseManager(this.logger);
-  private readonly shutdownManager = new GracefulShutdownManager(this.logger);
+  private readonly config;
+  private readonly monitorConfig;
+  private readonly logger;
+  private readonly dbManager;
+  private readonly shutdownManager;
   private running = false;
-  private lastSnapshot: ReplicationMonitorSnapshot = buildSnapshot([], this.monitorConfig.maxLagSeconds);
+  private lastSnapshot: ReplicationMonitorSnapshot = buildSnapshot([], 30);
   private httpServer: ReturnType<typeof createServer> | null = null;
+
+  constructor(config: PlatformConfig) {
+    this.config = config;
+    this.monitorConfig = config.replicationMonitor;
+    this.logger = createLogger({ service: 'replication-monitor' }, config.logging);
+    this.dbManager = new DatabaseManager(this.logger);
+    this.shutdownManager = new GracefulShutdownManager(this.logger);
+    this.lastSnapshot = buildSnapshot([], this.monitorConfig.maxLagSeconds);
+  }
 
   async start(): Promise<void> {
     this.logger.info({ event: 'replication_monitor_start' }, 'Replication monitor starting');
@@ -229,7 +238,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const service = new ReplicationMonitorService();
+  const config = await loadConfig();
+  const service = new ReplicationMonitorService(config);
   await service.start();
 }
 

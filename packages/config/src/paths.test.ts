@@ -92,11 +92,15 @@ describe('repository config path resolution', () => {
     );
   });
 
-  it('loads config successfully when started from apps/coordinator cwd', () => {
+  it('loads config successfully when started from apps/coordinator cwd', async () => {
+    process.env.PLATFORM_CONFIG = resolve(
+      resolveRepositoryRoot(),
+      'packages/config/test-fixtures/minimal-platform.yaml',
+    );
     process.env.LOCAL_DB_PASSWORD = 'test-password';
     process.chdir(resolve(resolveRepositoryRoot(), 'apps', 'coordinator'));
 
-    const config = loadConfig();
+    const config = await loadConfig();
 
     assert.equal(config.environment, 'development');
     assert.equal(config.localDatabase.user, 'root');

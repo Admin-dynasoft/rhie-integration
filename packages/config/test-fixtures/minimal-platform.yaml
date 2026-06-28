@@ -26,6 +26,9 @@ rhie:
     username: test
     password: test-password
 
+environmentDiscovery:
+  enabled: false
+
 localDatabase:
   id: local-primary
   name: Local Test Database

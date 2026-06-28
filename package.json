@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist services/*/dist",
-    "test": "npm run test -w @rhie/service-client-registry && npm run test -w @rhie/service-encounter-id && npm run test -w @rhie/config",
+    "test": "npm run test -w @rhie/service-client-registry && npm run test -w @rhie/service-encounter-id && npm run test -w @rhie/config && npm run test -w @rhie/environment-discovery",
     "test:config": "npm run test -w @rhie/config",
     "test:client-registry": "npm run test -w @rhie/service-client-registry",
     "test:encounter-id": "npm run test -w @rhie/service-encounter-id",

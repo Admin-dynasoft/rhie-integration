@@ -46,10 +46,9 @@ export type {
   ReplicationHealthStatus,
 } from './types.js';
 
-export { ClientRegistryConfigSchema } from './client-registry.js';
-export { EncounterIdConfigSchema } from './encounter-id.js';
-export { IntegrationStateConfigSchema } from './integration-state.js';
-export { ReplicationMonitorConfigSchema } from './replication-monitor.js';
+export { needsEnvironmentDiscovery, mergeDiscoveredEnvironment } from './apply-environment-discovery.js';
+export type { EnvironmentDiscoveryConfig } from './environment-discovery-config.js';
+export { EnvironmentDiscoveryConfigSchema } from './environment-discovery-config.js';
 
 export {
   PlatformConfigSchema,

@@ -1,0 +1,53 @@
+{
+  "updatedAt": "2026-06-28T17:13:27.376Z",
+  "globalMode": "local",
+  "facilities": {
+    "HC-A": {
+      "facilityId": "HC-A",
+      "mode": "local",
+      "onlineAvailable": false,
+      "localAvailable": true,
+      "replicationHealthy": true,
+      "replicationLagSeconds": null,
+      "lastSyncCheck": "2026-06-28T17:13:27.376Z",
+      "reason": "Online unavailable — local workers active"
+    },
+    "HC-B": {
+      "facilityId": "HC-B",
+      "mode": "local",
+      "onlineAvailable": false,
+      "localAvailable": true,
+      "replicationHealthy": true,
+      "replicationLagSeconds": null,
+      "lastSyncCheck": "2026-06-28T17:13:27.376Z",
+      "reason": "Online unavailable — local workers active"
+    }
+  },
+  "workerHosts": {
+    "client-registry-host": {
+      "name": "client-registry-host",
+      "status": "offline",
+      "lastPoll": "2026-06-28T17:13:27.358Z"
+    },
+    "encounter-id-host": {
+      "name": "encounter-id-host",
+      "status": "offline",
+      "lastPoll": "2026-06-28T17:13:27.362Z"
+    },
+    "visit-encounter-host": {
+      "name": "visit-encounter-host",
+      "status": "offline",
+      "lastPoll": "2026-06-28T17:13:27.369Z"
+    },
+    "transfer-encounter-host": {
+      "name": "transfer-encounter-host",
+      "status": "offline",
+      "lastPoll": "2026-06-28T17:13:27.372Z"
+    },
+    "observation-host": {
+      "name": "observation-host",
+      "status": "offline",
+      "lastPoll": "2026-06-28T17:13:27.376Z"
+    }
+  }
+}

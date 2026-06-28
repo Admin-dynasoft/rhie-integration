@@ -86,6 +86,12 @@ replicationMonitor:
   treatNonReplicaAsHealthy: true
   preferLocalOnLag: true
 
+environmentDiscovery:
+  enabled: true
+  mode: auto
+  cachePath: ./data/discovered-environment.json
+  centralDatabase: medisoft_hie
+
 localDatabase:
   id: local-primary
   name: Local Medisoft Database
@@ -94,47 +100,8 @@ localDatabase:
   port: 3306
   user: root
   password: ${LOCAL_DB_PASSWORD}
-  database: medisoft_testing
   connectionLimit: 10
   connectTimeoutMs: 10000
   enabled: true
 
-onlineDatabases:
-  - id: online-hc-a
-    name: Health Center A
-    role: online
-    facilityCode: HC-A
-    host: db-hca.example.com
-    port: 3306
-    user: medisoft
-    password: ${HC_A_DB_PASSWORD}
-    database: medisoft_hca
-    connectionLimit: 10
-    connectTimeoutMs: 10000
-    enabled: true
-
-  - id: online-hc-b
-    name: Health Center B
-    role: online
-    facilityCode: HC-B
-    host: db-hcb.example.com
-    port: 3306
-    user: medisoft
-    password: ${HC_B_DB_PASSWORD}
-    database: medisoft_hcb
-    connectionLimit: 10
-    connectTimeoutMs: 10000
-    enabled: true
-
-  - id: online-hc-c
-    name: Health Center C
-    role: online
-    facilityCode: HC-C
-    host: db-hcc.example.com
-    port: 3306
-    user: medisoft
-    password: ${HC_C_DB_PASSWORD}
-    database: medisoft_hcc
-    connectionLimit: 10
-    connectTimeoutMs: 10000
-    enabled: false
+onlineDatabases: []

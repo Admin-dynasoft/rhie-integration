@@ -19,7 +19,7 @@ function parseWorkerTypes(): string[] | undefined {
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const config = await loadConfig();
   const serviceName = process.env.SERVICE_NAME ?? 'worker-host';
   const workerTypes = parseWorkerTypes();
   const factories = getWorkerFactories(workerTypes);

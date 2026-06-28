@@ -22,7 +22,7 @@ export function summarizeDatabaseConfig(config: DatabaseConfig): DatabaseConfigL
     id: config.id,
     host: config.host,
     port: config.port,
-    database: config.database,
+    database: config.database ?? '',
     user: config.user,
     passwordPresent: config.password.length > 0,
   };

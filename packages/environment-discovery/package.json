@@ -1,5 +1,5 @@
 {
-  "name": "@rhie/config",
+  "name": "@rhie/environment-discovery",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",
@@ -13,13 +13,10 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "rm -rf dist",
-    "test": "node --import tsx --test src/paths.test.ts src/loader.test.ts"
+    "test": "node --import tsx --test src/helpers.test.ts"
   },
   "dependencies": {
-    "@rhie/environment-discovery": "*",
-    "dotenv": "^16.4.7",
-    "yaml": "^2.6.1",
-    "zod": "^3.24.1"
+    "mysql2": "^3.12.0"
   },
   "devDependencies": {
     "tsx": "^4.19.2"

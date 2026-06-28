@@ -16,6 +16,7 @@ import { ConfigurationError } from './errors.js';
 import {
   assertLocalDatabaseConfig,
 } from './database-validation.js';
+import { applyEnvironmentDiscovery } from './apply-environment-discovery.js';
 
 export * from './types.js';
 export {
@@ -109,7 +110,45 @@ function loadEnvironmentFiles(): void {
   loadDotenv();
 }
 
-export function loadConfig(configPath?: string): PlatformConfig {
+function parseConfigFile(resolvedPath: string): Record<string, unknown> {
+  const fileContent = readFileSync(resolvedPath, 'utf-8');
+  const extension = resolvedPath.split('.').pop()?.toLowerCase();
+
+  if (extension === 'yaml' || extension === 'yml') {
+    return parseYaml(fileContent) as Record<string, unknown>;
+  }
+  if (extension === 'json') {
+    return JSON.parse(fileContent) as Record<string, unknown>;
+  }
+  throw new Error(`Unsupported config format: ${extension}`);
+}
+
+async function finalizeConfig(
+  parsed: PlatformConfig,
+  resolvedPath: string,
+): Promise<PlatformConfig> {
+  const { config, discovery } = await applyEnvironmentDiscovery(parsed);
+
+  try {
+    assertLocalDatabaseConfig(config.localDatabase);
+  } catch (error) {
+    if (error instanceof ConfigurationError) {
+      throw new ConfigurationError(
+        `Failed to load ${resolvedPath}: ${error.message}`,
+      );
+    }
+    throw error;
+  }
+
+  if (discovery) {
+    // Discovery metadata is intentionally not logged here — callers log after load.
+    void discovery;
+  }
+
+  return config;
+}
+
+export async function loadConfig(configPath?: string): Promise<PlatformConfig> {
   if (cachedConfig) {
     return cachedConfig;
   }
@@ -122,38 +161,12 @@ export function loadConfig(configPath?: string): PlatformConfig {
     throw new Error(`Configuration file not found: ${resolvedPath}`);
   }
 
-  const fileContent = readFileSync(resolvedPath, 'utf-8');
-  const extension = resolvedPath.split('.').pop()?.toLowerCase();
-
-  let raw: Record<string, unknown>;
-
-  if (extension === 'yaml' || extension === 'yml') {
-    raw = parseYaml(fileContent) as Record<string, unknown>;
-  } else if (extension === 'json') {
-    raw = JSON.parse(fileContent) as Record<string, unknown>;
-  } else {
-    throw new Error(`Unsupported config format: ${extension}`);
-  }
-
-  let withSubstitution: Record<string, unknown>;
-  withSubstitution = substituteEnvVars(raw) as Record<string, unknown>;
-
+  const raw = parseConfigFile(resolvedPath);
+  const withSubstitution = substituteEnvVars(raw) as Record<string, unknown>;
   const withEnv = applyEnvOverrides(withSubstitution);
   const parsed = PlatformConfigSchema.parse(withEnv);
-
-  try {
-    assertLocalDatabaseConfig(parsed.localDatabase);
-  } catch (error) {
-    if (error instanceof ConfigurationError) {
-      throw new ConfigurationError(
-        `Failed to load ${resolvedPath}: ${error.message}`,
-      );
-    }
-    throw error;
-  }
-
-  cachedConfig = parsed;
-  return parsed;
+  cachedConfig = await finalizeConfig(parsed, resolvedPath);
+  return cachedConfig;
 }
 
 export function getLoadedConfigPath(): string {
@@ -161,10 +174,13 @@ export function getLoadedConfigPath(): string {
 }
 
 export { summarizeDatabaseConfig } from './database-validation.js';
+export { needsEnvironmentDiscovery, mergeDiscoveredEnvironment } from './apply-environment-discovery.js';
 
 export function getConfig(): PlatformConfig {
   if (!cachedConfig) {
-    return loadConfig();
+    throw new ConfigurationError(
+      'Configuration has not been loaded. Call await loadConfig() during service startup.',
+    );
   }
   return cachedConfig;
 }

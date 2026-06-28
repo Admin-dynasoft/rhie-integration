@@ -142,7 +142,7 @@ export class ServiceLifecycle {
   constructor(private readonly options: ServiceBootstrapOptions) {}
 
   async start(): Promise<void> {
-    const config = loadConfig();
+    const config = await loadConfig();
     const logger = createLogger({ service: this.options.serviceName }, config.logging);
     const dbManager = new DatabaseManager(logger);
     const rhieClient = createRhieClient({ config: config.rhie, retryConfig: config.retry, logger });
@@ -184,7 +184,7 @@ export class ServiceLifecycle {
     facilityId: string | undefined,
     dbManager: DatabaseManager,
     rhieClient: RhieClient,
-    config: ReturnType<typeof loadConfig>,
+    config: Awaited<ReturnType<typeof loadConfig>>,
   ): void {
     const workerId = `${definition.name}-${facilityId ?? 'local'}`;
     const logger = createLogger(

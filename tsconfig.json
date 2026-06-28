@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/environment-discovery" },
     { "path": "packages/config" },
     { "path": "packages/logger" },
     { "path": "packages/retry" },

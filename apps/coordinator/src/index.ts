@@ -8,6 +8,7 @@ import {
   summarizeDatabaseConfig,
   type CoordinatorState,
   type FacilityProcessingState,
+  type PlatformConfig,
   type ProcessingMode,
   type WorkerHostHealthState,
 } from '@rhie/config';
@@ -23,15 +24,22 @@ interface SyncHealthResult {
 }
 
 export class PlatformCoordinator {
-  private readonly config = loadConfig();
-  private readonly logger = createLogger({ service: 'coordinator' }, this.config.logging);
-  private readonly dbManager = new MultiDatabaseManager(this.logger);
-  private readonly shutdownManager = new GracefulShutdownManager(this.logger);
+  private readonly config: PlatformConfig;
+  private readonly logger;
+  private readonly dbManager;
+  private readonly shutdownManager;
   private running = false;
   private lastSyncHealth: SyncHealthResult = { localOk: false, onlineStatus: {} };
   private lastReplicationSnapshot: ReplicationMonitorSnapshot | null = null;
   private lastWorkerHostHealth: Record<string, WorkerHostHealthState> = {};
   private healthServer: HealthHttpServer | null = null;
+
+  constructor(config: PlatformConfig) {
+    this.config = config;
+    this.logger = createLogger({ service: 'coordinator' }, config.logging);
+    this.dbManager = new MultiDatabaseManager(this.logger);
+    this.shutdownManager = new GracefulShutdownManager(this.logger);
+  }
 
   async start(): Promise<void> {
     this.logger.info(
@@ -39,6 +47,7 @@ export class PlatformCoordinator {
         event: 'config_loaded',
         configPath: resolvePlatformConfigPath(),
         localDatabase: summarizeDatabaseConfig(this.config.localDatabase),
+        onlineDatabaseCount: this.config.onlineDatabases.filter((db) => db.enabled).length,
       },
       'Platform configuration loaded',
     );
@@ -351,7 +360,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const coordinator = new PlatformCoordinator();
+  const config = await loadConfig();
+  const coordinator = new PlatformCoordinator(config);
   await coordinator.start();
 }
 

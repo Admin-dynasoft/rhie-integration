@@ -3,6 +3,7 @@ import { ClientRegistryConfigSchema } from './client-registry.js';
 import { EncounterIdConfigSchema } from './encounter-id.js';
 import { IntegrationStateConfigSchema } from './integration-state.js';
 import { ReplicationMonitorConfigSchema } from './replication-monitor.js';
+import { EnvironmentDiscoveryConfigSchema } from './environment-discovery-config.js';
 
 export const DatabaseConfigSchema = z.object({
   id: z.string().min(1),
@@ -11,7 +12,7 @@ export const DatabaseConfigSchema = z.object({
   port: z.number().int().positive().default(3306),
   user: z.string().min(1),
   password: z.string(),
-  database: z.string().min(1),
+  database: z.string().min(1).optional(),
   connectionLimit: z.number().int().positive().default(10),
   connectTimeoutMs: z.number().int().positive().default(10000),
   enabled: z.boolean().default(true),
@@ -140,6 +141,7 @@ export const PlatformConfigSchema = z.object({
   encounterId: EncounterIdConfigSchema.default({}),
   integrationState: IntegrationStateConfigSchema.default({}),
   replicationMonitor: ReplicationMonitorConfigSchema.default({}),
+  environmentDiscovery: EnvironmentDiscoveryConfigSchema.default({}),
   localDatabase: LocalDatabaseConfigSchema,
   onlineDatabases: z.array(OnlineDatabaseConfigSchema).default([]),
 });
@@ -154,6 +156,8 @@ export type { EncounterIdConfig, EncounterIdExecutionMode } from './encounter-id
 export { EncounterIdConfigSchema } from './encounter-id.js';
 export type { IntegrationStateConfig } from './integration-state.js';
 export { IntegrationStateConfigSchema } from './integration-state.js';
+export type { EnvironmentDiscoveryConfig } from './environment-discovery-config.js';
+export { EnvironmentDiscoveryConfigSchema } from './environment-discovery-config.js';
 export type { ReplicationMonitorConfig } from './replication-monitor.js';
 export { ReplicationMonitorConfigSchema } from './replication-monitor.js';
 
