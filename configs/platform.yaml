@@ -67,6 +67,11 @@ clientRegistry:
   excludeTemporaryDocuments: true
   maxClientsPerBatch: 15
 
+encounterId:
+  executionMode: shadow
+  generateFromDate: "2026-06-24"
+  transferGenerateFromDate: "2026-06-20"
+
 localDatabase:
   id: local-primary
   name: Local Medisoft Database

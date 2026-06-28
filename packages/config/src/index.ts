@@ -26,9 +26,12 @@ export type {
   WorkerHostHealthState,
   ClientRegistryConfig,
   ClientRegistryExecutionMode,
+  EncounterIdConfig,
+  EncounterIdExecutionMode,
 } from './types.js';
 
 export { ClientRegistryConfigSchema } from './client-registry.js';
+export { EncounterIdConfigSchema } from './encounter-id.js';
 
 export {
   PlatformConfigSchema,

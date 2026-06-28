@@ -30,7 +30,7 @@ Phase 2.5 builds the reusable infrastructure that all RHIE services share.
 | Service | Worker Type | Status |
 |---------|-------------|--------|
 | `services/client-registry` | `client-registry` | **Implemented** (shadow + production) |
-| `services/encounter-id` | `encounter-id` | Stub |
+| `services/encounter-id` | `encounter-id` | Phase 4 — encounter UUID generation (shadow + production) |
 | `services/visit-encounter` | `visit-encounter` | Stub |
 | `services/transfer-encounter` | `transfer-encounter` | Stub |
 | `services/observation` | `observation` | Stub |

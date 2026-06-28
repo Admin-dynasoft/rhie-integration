@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ClientRegistryConfigSchema } from './client-registry.js';
+import { EncounterIdConfigSchema } from './encounter-id.js';
 
 export const DatabaseConfigSchema = z.object({
   id: z.string().min(1),
@@ -129,6 +130,7 @@ export const PlatformConfigSchema = z.object({
   monitoring: MonitoringConfigSchema.default({}),
   rhie: RhieConfigSchema,
   clientRegistry: ClientRegistryConfigSchema.default({}),
+  encounterId: EncounterIdConfigSchema.default({}),
   localDatabase: LocalDatabaseConfigSchema,
   onlineDatabases: z.array(OnlineDatabaseConfigSchema).default([]),
 });
@@ -139,6 +141,8 @@ export type ProcessingMode = 'online' | 'local' | 'standby';
 
 export type { ClientRegistryConfig, ClientRegistryExecutionMode } from './client-registry.js';
 export { ClientRegistryConfigSchema } from './client-registry.js';
+export type { EncounterIdConfig, EncounterIdExecutionMode } from './encounter-id.js';
+export { EncounterIdConfigSchema } from './encounter-id.js';
 
 export interface FacilityProcessingState {
   facilityId: string;

@@ -1,9 +1,22 @@
 {
   "name": "@rhie/service-encounter-id",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": { "build": "tsc -b", "clean": "rm -rf dist" },
-  "dependencies": { "@rhie/worker-framework": "*" }
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@rhie/config": "*",
+    "@rhie/database": "*",
+    "@rhie/logger": "*",
+    "@rhie/shared": "*",
+    "@rhie/worker-framework": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
 }

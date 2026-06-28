@@ -214,3 +214,39 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 
 **Rationale:** Documented ambiguity in Phase 2 analysis. Changing either column would alter which records are processed.
 
+---
+
+## ADR-029: Encounter ID Is Database-Only (Phase 4 Finding)
+
+**Finding:** PHP `generate_encounters_batch.php` generates local UUIDs and inserts into `encounter_main` / `encounter_patients`. It does not call RHIE `/encounters/id` or any external API.
+
+**Decision:** Encounter ID TypeScript service has no `@rhie/rhie-client` dependency. `encounterIdPath` in platform config remains unused until a future requirement adds HIE pre-registration.
+
+---
+
+## ADR-030: Encounter ID Shadow Mode (Phase 4)
+
+**Decision:** Encounter ID supports `executionMode: shadow | production` in `encounterId` config section, matching Client Registry pattern.
+
+**Rationale:** Enables SQL and payload validation before enabling database writes. Default is `shadow`.
+
+---
+
+## ADR-031: Preserve PHP Encounter Type Quirks (Phase 4)
+
+**Decision:** TypeScript must preserve known PHP inconsistencies:
+
+- Vital main check type `encountervital` vs insert type `encounter_vital`
+- Referral batch `source_table = 'diag_client'` vs on-demand `'referral'`
+- Per-generator `patient_id` vs `client_id` join columns
+
+**Rationale:** Changing these would alter which records are processed or deduplicated.
+
+---
+
+## ADR-032: All Encounter Generators in Single Worker (Phase 4)
+
+**Decision:** One `EncounterProcessor.processAllGenerators()` runs all 13 PHP generator methods in fixed order per worker cycle.
+
+**Rationale:** Matches `generate_encounters_batch.php` orchestration. Splitting generators across workers would require new coordination and change production behaviour.
+
