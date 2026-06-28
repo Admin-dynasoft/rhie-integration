@@ -1,0 +1,29 @@
+{
+  "name": "rhie-integration-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Medisoft RHIE Integration Platform — autonomous background services for Medisoft ↔ Rwanda HIE synchronization",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist",
+    "dev:coordinator": "npm run start -w @rhie/coordinator",
+    "dev:client": "npm run start -w @rhie/client-service",
+    "dev:encounter-id": "npm run start -w @rhie/encounter-id-service",
+    "dev:visit": "npm run start -w @rhie/visit-service",
+    "dev:transfer": "npm run start -w @rhie/transfer-service",
+    "dev:observation": "npm run start -w @rhie/observation-service",
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc -b --pretty"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}

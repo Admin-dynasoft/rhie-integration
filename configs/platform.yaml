@@ -1,0 +1,93 @@
+environment: development
+
+logging:
+  level: info
+  prettyPrint: true
+
+retry:
+  maxAttempts: 3
+  initialDelayMs: 1000
+  maxDelayMs: 30000
+  backoffMultiplier: 2
+
+worker:
+  sleepIntervalMs: 5000
+  batchSize: 50
+  maxConcurrentWorkers: 4
+  heartbeatIntervalMs: 10000
+  healthCheckIntervalMs: 30000
+
+coordinator:
+  syncHealthCheckIntervalMs: 15000
+  onlineUnavailableThresholdMs: 60000
+  serviceHeartbeatTimeoutMs: 45000
+  stateFilePath: ./data/coordinator-state.json
+
+monitoring:
+  healthPort: 9090
+  metricsEnabled: true
+
+rhie:
+  baseUrl: https://rhie.example.gov.rw/api
+  timeoutMs: 30000
+  auth:
+    type: bearer
+    token: ${RHIE_API_TOKEN}
+  clientRegistryPath: /client-registry
+  encounterIdPath: /encounters/id
+  visitEncounterPath: /encounters/visit
+  transferEncounterPath: /encounters/transfer
+  observationPath: /observations
+
+localDatabase:
+  id: local-primary
+  name: Local Medisoft Database
+  role: local
+  host: 127.0.0.1
+  port: 3306
+  user: medisoft
+  password: ${LOCAL_DB_PASSWORD}
+  database: medisoft_local
+  connectionLimit: 10
+  connectTimeoutMs: 10000
+  enabled: true
+
+onlineDatabases:
+  - id: online-hc-a
+    name: Health Center A
+    role: online
+    facilityCode: HC-A
+    host: db-hca.example.com
+    port: 3306
+    user: medisoft
+    password: ${HC_A_DB_PASSWORD}
+    database: medisoft_hca
+    connectionLimit: 10
+    connectTimeoutMs: 10000
+    enabled: true
+
+  - id: online-hc-b
+    name: Health Center B
+    role: online
+    facilityCode: HC-B
+    host: db-hcb.example.com
+    port: 3306
+    user: medisoft
+    password: ${HC_B_DB_PASSWORD}
+    database: medisoft_hcb
+    connectionLimit: 10
+    connectTimeoutMs: 10000
+    enabled: true
+
+  - id: online-hc-c
+    name: Health Center C
+    role: online
+    facilityCode: HC-C
+    host: db-hcc.example.com
+    port: 3306
+    user: medisoft
+    password: ${HC_C_DB_PASSWORD}
+    database: medisoft_hcc
+    connectionLimit: 10
+    connectTimeoutMs: 10000
+    enabled: false

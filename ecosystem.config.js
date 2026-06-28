@@ -1,0 +1,82 @@
+module.exports = {
+  apps: [
+    {
+      name: 'rhie-coordinator',
+      cwd: './apps/coordinator',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '256M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+    {
+      name: 'rhie-client-service',
+      cwd: './apps/client-service',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+    {
+      name: 'rhie-encounter-id-service',
+      cwd: './apps/encounter-id-service',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+    {
+      name: 'rhie-visit-service',
+      cwd: './apps/visit-service',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+    {
+      name: 'rhie-transfer-service',
+      cwd: './apps/transfer-service',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+    {
+      name: 'rhie-observation-service',
+      cwd: './apps/observation-service',
+      script: 'dist/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        CONFIG_PATH: '../../configs/platform.yaml',
+      },
+    },
+  ],
+};

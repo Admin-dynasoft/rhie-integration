@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/logger" },
+    { "path": "packages/retry" },
+    { "path": "packages/monitoring" },
+    { "path": "packages/database" },
+    { "path": "packages/rhie-client" },
+    { "path": "packages/shared" },
+    { "path": "apps/coordinator" },
+    { "path": "apps/client-service" },
+    { "path": "apps/encounter-id-service" },
+    { "path": "apps/visit-service" },
+    { "path": "apps/transfer-service" },
+    { "path": "apps/observation-service" }
+  ]
+}
