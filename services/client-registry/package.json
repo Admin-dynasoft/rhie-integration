@@ -20,5 +20,16 @@
   },
   "devDependencies": {
     "tsx": "^4.19.2"
-  }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
 }

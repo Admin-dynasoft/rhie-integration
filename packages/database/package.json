@@ -7,6 +7,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
@@ -18,5 +20,8 @@
     "@rhie/config": "*",
     "@rhie/logger": "*",
     "mysql2": "^3.12.0"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

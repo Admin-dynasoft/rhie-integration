@@ -9,7 +9,7 @@
     "services/*"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node scripts/verify-workspace-dist.mjs",
     "clean": "find packages apps services -name tsconfig.tsbuildinfo -delete && rm -rf packages/*/dist apps/*/dist services/*/dist",
     "verify:build": "npm run clean && npm run build",
     "test": "npm run test -w @rhie/service-client-registry && npm run test -w @rhie/service-encounter-id && npm run test -w @rhie/config && npm run test -w @rhie/environment-discovery",
@@ -18,14 +18,14 @@
     "test:encounter-id": "npm run test -w @rhie/service-encounter-id",
     "test:integration-state": "npm run test -w @rhie/integration-state",
     "test:replication-monitor": "npm run test -w @rhie/replication-monitor",
-    "dev:coordinator": "npm run start -w @rhie/coordinator",
-    "dev:replication-monitor": "npm run start -w @rhie/replication-monitor-app",
-    "dev:worker-host": "npm run start -w @rhie/worker-host",
-    "dev:client-host": "SERVICE_NAME=client-registry-host WORKER_TYPES=client-registry HEALTH_PORT=9091 npm run start -w @rhie/worker-host",
-    "dev:encounter-host": "SERVICE_NAME=encounter-id-host WORKER_TYPES=encounter-id HEALTH_PORT=9092 npm run start -w @rhie/worker-host",
-    "dev:visit-host": "SERVICE_NAME=visit-encounter-host WORKER_TYPES=visit-encounter HEALTH_PORT=9093 npm run start -w @rhie/worker-host",
-    "dev:transfer-host": "SERVICE_NAME=transfer-encounter-host WORKER_TYPES=transfer-encounter HEALTH_PORT=9094 npm run start -w @rhie/worker-host",
-    "dev:observation-host": "SERVICE_NAME=observation-host WORKER_TYPES=observation HEALTH_PORT=9095 npm run start -w @rhie/worker-host",
+    "dev:coordinator": "npm run build && npm run start -w @rhie/coordinator",
+    "dev:replication-monitor": "npm run build && npm run start -w @rhie/replication-monitor-app",
+    "dev:worker-host": "npm run build && npm run start -w @rhie/worker-host",
+    "dev:client-host": "npm run build && SERVICE_NAME=client-registry-host WORKER_TYPES=client-registry HEALTH_PORT=9091 npm run start -w @rhie/worker-host",
+    "dev:encounter-host": "npm run build && SERVICE_NAME=encounter-id-host WORKER_TYPES=encounter-id HEALTH_PORT=9092 npm run start -w @rhie/worker-host",
+    "dev:visit-host": "npm run build && SERVICE_NAME=visit-encounter-host WORKER_TYPES=visit-encounter HEALTH_PORT=9093 npm run start -w @rhie/worker-host",
+    "dev:transfer-host": "npm run build && SERVICE_NAME=transfer-encounter-host WORKER_TYPES=transfer-encounter HEALTH_PORT=9094 npm run start -w @rhie/worker-host",
+    "dev:observation-host": "npm run build && SERVICE_NAME=observation-host WORKER_TYPES=observation HEALTH_PORT=9095 npm run start -w @rhie/worker-host",
     "typecheck": "tsc -b --pretty"
   },
   "engines": {

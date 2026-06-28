@@ -15,5 +15,16 @@
     "@rhie/service-visit-encounter": "*",
     "@rhie/service-transfer-encounter": "*",
     "@rhie/service-observation": "*"
-  }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
 }
