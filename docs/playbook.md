@@ -83,6 +83,7 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 - **F-003:** Implement duplicate upload prevention via database locking or status transitions
 - **F-004:** Add integration tests against Medisoft schema fixtures
 - **F-005:** Evaluate coordinator state in shared DB table for multi-host deployment
+- **F-006:** Replication-aware RHIE status synchronization — see `docs/replication-rhie-status-architecture.md`
 
 ---
 
