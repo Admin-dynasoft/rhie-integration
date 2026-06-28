@@ -12,10 +12,11 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@rhie/config": "*",
+    "@rhie/database": "*",
     "@rhie/logger": "*"
   }
 }

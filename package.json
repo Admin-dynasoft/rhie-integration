@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist services/*/dist",
+    "clean": "find packages apps services -name tsconfig.tsbuildinfo -delete && rm -rf packages/*/dist apps/*/dist services/*/dist",
+    "verify:build": "npm run clean && npm run build",
     "test": "npm run test -w @rhie/service-client-registry && npm run test -w @rhie/service-encounter-id && npm run test -w @rhie/config && npm run test -w @rhie/environment-discovery",
     "test:config": "npm run test -w @rhie/config",
     "test:client-registry": "npm run test -w @rhie/service-client-registry",

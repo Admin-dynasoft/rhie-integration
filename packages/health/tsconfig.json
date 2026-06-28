@@ -4,6 +4,10 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "references": [{ "path": "../config" }, { "path": "../logger" }],
+  "references": [
+    { "path": "../config" },
+    { "path": "../database" },
+    { "path": "../logger" }
+  ],
   "include": ["src/**/*"]
 }
