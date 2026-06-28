@@ -1,0 +1,39 @@
+environment: development
+
+logging:
+  level: info
+
+retry:
+  maxAttempts: 1
+  initialDelayMs: 100
+  maxDelayMs: 1000
+  backoffMultiplier: 2
+
+worker:
+  sleepIntervalMs: 5000
+  batchSize: 10
+
+coordinator:
+  syncHealthCheckIntervalMs: 15000
+
+monitoring:
+  healthPort: 9090
+
+rhie:
+  baseUrl: https://example.test
+  auth:
+    type: basic
+    username: test
+    password: test-password
+
+localDatabase:
+  id: local-primary
+  name: Local Test Database
+  role: local
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ${LOCAL_DB_PASSWORD}
+  database: medisoft_testing
+
+onlineDatabases: []

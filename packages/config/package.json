@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "rm -rf dist",
-    "test": "node --import tsx --test src/paths.test.ts"
+    "test": "node --import tsx --test src/paths.test.ts src/loader.test.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

@@ -6,7 +6,11 @@ import mysql, {
   type ResultSetHeader,
   type ExecuteValues,
 } from 'mysql2/promise';
-import type { DatabaseConfig } from '@rhie/config';
+import {
+  assertDatabaseConnectionConfig,
+  summarizeDatabaseConfig,
+  type DatabaseConfig,
+} from '@rhie/config';
 import type { Logger } from '@rhie/logger';
 
 export type QueryResult<T> = T[];
@@ -34,6 +38,18 @@ export class DatabaseConnection {
   }
 
   private async createPool(): Promise<void> {
+    assertDatabaseConnectionConfig(this.config);
+
+    const connectionSummary = summarizeDatabaseConfig(this.config);
+    this.logger.info(
+      {
+        event: 'database_connecting',
+        databaseId: this.config.id,
+        ...connectionSummary,
+      },
+      `Connecting to database: ${this.config.name}`,
+    );
+
     const poolOptions: PoolOptions = {
       host: this.config.host,
       port: this.config.port,
@@ -55,7 +71,10 @@ export class DatabaseConnection {
         event: 'database_connected',
         databaseId: this.config.id,
         host: this.config.host,
+        port: this.config.port,
         database: this.config.database,
+        user: this.config.user,
+        passwordPresent: this.config.password.length > 0,
       },
       `Connected to database: ${this.config.name}`,
     );

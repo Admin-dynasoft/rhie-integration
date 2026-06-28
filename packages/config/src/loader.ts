@@ -12,6 +12,10 @@ import {
   resolvePlatformConfigPath,
   resolveRepositoryRoot,
 } from './paths.js';
+import { ConfigurationError } from './errors.js';
+import {
+  assertLocalDatabaseConfig,
+} from './database-validation.js';
 
 export * from './types.js';
 export {
@@ -23,17 +27,23 @@ export {
 
 let cachedConfig: PlatformConfig | null = null;
 
-function substituteEnvVars(value: unknown): unknown {
+function substituteEnvVars(value: unknown, path = 'config'): unknown {
   if (typeof value === 'string') {
-    return value.replace(/\$\{(\w+)\}/g, (_, name: string) => process.env[name] ?? '');
+    return value.replace(/\$\{(\w+)\}/g, (_placeholder, name: string) => {
+      const envValue = process.env[name];
+      if (envValue === undefined || envValue === '') {
+        return '';
+      }
+      return envValue;
+    });
   }
   if (Array.isArray(value)) {
-    return value.map(substituteEnvVars);
+    return value.map((item, index) => substituteEnvVars(item, `${path}[${index}]`));
   }
   if (value !== null && typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
-      result[key] = substituteEnvVars(val);
+      result[key] = substituteEnvVars(val, `${path}.${key}`);
     }
     return result;
   }
@@ -51,18 +61,38 @@ function applyEnvOverrides(raw: Record<string, unknown>): Record<string, unknown
     result.rhie = { ...(result.rhie as object ?? {}), baseUrl: process.env.RHIE_BASE_URL };
   }
 
-  if (process.env.LOCAL_DB_HOST) {
-    result.localDatabase = {
-      ...(result.localDatabase as object ?? {}),
-      host: process.env.LOCAL_DB_HOST,
-    };
+  const localDatabase = {
+    ...(result.localDatabase as Record<string, unknown> ?? {}),
+  };
+
+  if (process.env.LOCAL_DB_HOST?.trim()) {
+    localDatabase.host = process.env.LOCAL_DB_HOST.trim();
   }
 
-  if (process.env.LOCAL_DB_PASSWORD) {
-    result.localDatabase = {
-      ...(result.localDatabase as object ?? {}),
-      password: process.env.LOCAL_DB_PASSWORD,
-    };
+  if (process.env.LOCAL_DB_PORT?.trim()) {
+    const port = Number.parseInt(process.env.LOCAL_DB_PORT, 10);
+    if (!Number.isFinite(port) || port <= 0) {
+      throw new ConfigurationError(
+        `LOCAL_DB_PORT must be a positive integer, got "${process.env.LOCAL_DB_PORT}"`,
+      );
+    }
+    localDatabase.port = port;
+  }
+
+  if (process.env.LOCAL_DB_USER?.trim()) {
+    localDatabase.user = process.env.LOCAL_DB_USER.trim();
+  }
+
+  if (process.env.LOCAL_DB_PASSWORD !== undefined && process.env.LOCAL_DB_PASSWORD !== '') {
+    localDatabase.password = process.env.LOCAL_DB_PASSWORD;
+  }
+
+  if (process.env.LOCAL_DB_DATABASE?.trim()) {
+    localDatabase.database = process.env.LOCAL_DB_DATABASE.trim();
+  }
+
+  if (Object.keys(localDatabase).length > 0) {
+    result.localDatabase = localDatabase;
   }
 
   return result;
@@ -105,13 +135,32 @@ export function loadConfig(configPath?: string): PlatformConfig {
     throw new Error(`Unsupported config format: ${extension}`);
   }
 
-  const withSubstitution = substituteEnvVars(raw) as Record<string, unknown>;
+  let withSubstitution: Record<string, unknown>;
+  withSubstitution = substituteEnvVars(raw) as Record<string, unknown>;
+
   const withEnv = applyEnvOverrides(withSubstitution);
   const parsed = PlatformConfigSchema.parse(withEnv);
+
+  try {
+    assertLocalDatabaseConfig(parsed.localDatabase);
+  } catch (error) {
+    if (error instanceof ConfigurationError) {
+      throw new ConfigurationError(
+        `Failed to load ${resolvedPath}: ${error.message}`,
+      );
+    }
+    throw error;
+  }
 
   cachedConfig = parsed;
   return parsed;
 }
+
+export function getLoadedConfigPath(): string {
+  return resolvePlatformConfigPath();
+}
+
+export { summarizeDatabaseConfig } from './database-validation.js';
 
 export function getConfig(): PlatformConfig {
   if (!cachedConfig) {

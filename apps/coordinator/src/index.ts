@@ -4,6 +4,8 @@ import axios from 'axios';
 import {
   loadConfig,
   resolveRepositoryRoot,
+  resolvePlatformConfigPath,
+  summarizeDatabaseConfig,
   type CoordinatorState,
   type FacilityProcessingState,
   type ProcessingMode,
@@ -32,6 +34,14 @@ export class PlatformCoordinator {
   private healthServer: HealthHttpServer | null = null;
 
   async start(): Promise<void> {
+    this.logger.info(
+      {
+        event: 'config_loaded',
+        configPath: resolvePlatformConfigPath(),
+        localDatabase: summarizeDatabaseConfig(this.config.localDatabase),
+      },
+      'Platform configuration loaded',
+    );
     this.logger.info({ event: 'coordinator_start' }, 'Platform coordinator starting');
 
     await this.dbManager.initialize(this.config);

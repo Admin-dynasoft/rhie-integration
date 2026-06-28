@@ -15,17 +15,26 @@ describe('repository config path resolution', () => {
   const originalPlatformConfig = process.env.PLATFORM_CONFIG;
   const originalConfigPath = process.env.CONFIG_PATH;
 
+  const originalLocalDbPassword = process.env.LOCAL_DB_PASSWORD;
+
   beforeEach(() => {
     resetRepositoryRootCache();
     resetConfigCache();
     delete process.env.PLATFORM_CONFIG;
     delete process.env.CONFIG_PATH;
+    process.env.LOCAL_DB_PASSWORD = 'test-password';
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
     resetRepositoryRootCache();
     resetConfigCache();
+
+    if (originalLocalDbPassword === undefined) {
+      delete process.env.LOCAL_DB_PASSWORD;
+    } else {
+      process.env.LOCAL_DB_PASSWORD = originalLocalDbPassword;
+    }
 
     if (originalPlatformConfig === undefined) {
       delete process.env.PLATFORM_CONFIG;
@@ -84,11 +93,14 @@ describe('repository config path resolution', () => {
   });
 
   it('loads config successfully when started from apps/coordinator cwd', () => {
+    process.env.LOCAL_DB_PASSWORD = 'test-password';
     process.chdir(resolve(resolveRepositoryRoot(), 'apps', 'coordinator'));
 
     const config = loadConfig();
 
     assert.equal(config.environment, 'development');
+    assert.equal(config.localDatabase.user, 'root');
+    assert.equal(config.localDatabase.password, 'test-password');
     assert.ok(config.rhie.baseUrl);
   });
 });

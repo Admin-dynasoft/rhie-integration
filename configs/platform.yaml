@@ -92,9 +92,9 @@ localDatabase:
   role: local
   host: 127.0.0.1
   port: 3306
-  user: medisoft
+  user: root
   password: ${LOCAL_DB_PASSWORD}
-  database: medisoft_local
+  database: medisoft_testing
   connectionLimit: 10
   connectTimeoutMs: 10000
   enabled: true

@@ -5,11 +5,20 @@ export {
   getEnabledOnlineDatabases,
   getDatabaseById,
   getLocalDatabase,
+  getLoadedConfigPath,
+  summarizeDatabaseConfig,
   resolvePlatformConfigPath,
   resolveRepositoryRoot,
   getDefaultPlatformConfigPath,
   resetRepositoryRootCache,
 } from './loader.js';
+
+export { ConfigurationError } from './errors.js';
+export {
+  assertDatabaseConnectionConfig,
+  assertLocalDatabaseConfig,
+  type DatabaseConfigLogSummary,
+} from './database-validation.js';
 
 export type {
   PlatformConfig,
