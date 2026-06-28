@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ClientRegistryConfigSchema } from './client-registry.js';
 
 export const DatabaseConfigSchema = z.object({
   id: z.string().min(1),
@@ -59,15 +60,6 @@ export const WorkerConfigSchema = z.object({
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>;
 
-export const CoordinatorConfigSchema = z.object({
-  syncHealthCheckIntervalMs: z.number().int().positive().default(15000),
-  onlineUnavailableThresholdMs: z.number().int().positive().default(60000),
-  serviceHeartbeatTimeoutMs: z.number().int().positive().default(45000),
-  stateFilePath: z.string().default('./data/coordinator-state.json'),
-});
-
-export type CoordinatorConfig = z.infer<typeof CoordinatorConfigSchema>;
-
 export const MonitoringConfigSchema = z.object({
   healthPort: z.number().int().positive().default(9090),
   metricsEnabled: z.boolean().default(true),
@@ -78,9 +70,42 @@ export type MonitoringConfig = z.infer<typeof MonitoringConfigSchema>;
 export const LoggingConfigSchema = z.object({
   level: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   prettyPrint: z.boolean().default(false),
+  fileEnabled: z.boolean().default(false),
+  filePath: z.string().default('./logs/platform.log'),
+  jsonFormat: z.boolean().default(true),
 });
 
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
+
+export const WorkerHostConfigSchema = z.object({
+  serviceName: z.string().min(1),
+  modes: z.array(z.enum(['online', 'local'])).default(['online', 'local']),
+  healthPort: z.number().int().positive().optional(),
+  metricsPort: z.number().int().positive().optional(),
+  workerTypes: z.array(z.string()).default([]),
+});
+
+export type WorkerHostConfig = z.infer<typeof WorkerHostConfigSchema>;
+
+export const CoordinatorConfigSchema = z.object({
+  syncHealthCheckIntervalMs: z.number().int().positive().default(15000),
+  onlineUnavailableThresholdMs: z.number().int().positive().default(60000),
+  serviceHeartbeatTimeoutMs: z.number().int().positive().default(45000),
+  stateFilePath: z.string().default('./data/coordinator-state.json'),
+  workerHostEndpoints: z
+    .array(
+      z.object({
+        name: z.string(),
+        healthUrl: z.string().url(),
+        metricsUrl: z.string().url().optional(),
+      }),
+    )
+    .default([]),
+  autoRestartFailedWorkers: z.boolean().default(true),
+  healthPollIntervalMs: z.number().int().positive().default(30000),
+});
+
+export type CoordinatorConfig = z.infer<typeof CoordinatorConfigSchema>;
 
 export const LocalDatabaseConfigSchema = DatabaseConfigSchema.extend({
   role: z.literal('local'),
@@ -103,6 +128,7 @@ export const PlatformConfigSchema = z.object({
   coordinator: CoordinatorConfigSchema.default({}),
   monitoring: MonitoringConfigSchema.default({}),
   rhie: RhieConfigSchema,
+  clientRegistry: ClientRegistryConfigSchema.default({}),
   localDatabase: LocalDatabaseConfigSchema,
   onlineDatabases: z.array(OnlineDatabaseConfigSchema).default([]),
 });
@@ -110,6 +136,9 @@ export const PlatformConfigSchema = z.object({
 export type PlatformConfig = z.infer<typeof PlatformConfigSchema>;
 
 export type ProcessingMode = 'online' | 'local' | 'standby';
+
+export type { ClientRegistryConfig, ClientRegistryExecutionMode } from './client-registry.js';
+export { ClientRegistryConfigSchema } from './client-registry.js';
 
 export interface FacilityProcessingState {
   facilityId: string;
@@ -123,4 +152,13 @@ export interface CoordinatorState {
   updatedAt: string;
   globalMode: ProcessingMode;
   facilities: Record<string, FacilityProcessingState>;
+  workerHosts?: Record<string, WorkerHostHealthState>;
+}
+
+export interface WorkerHostHealthState {
+  name: string;
+  status: 'healthy' | 'degraded' | 'offline';
+  lastPoll: string;
+  workerCount?: number;
+  failedWorkers?: number;
 }

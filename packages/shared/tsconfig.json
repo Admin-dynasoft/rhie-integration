@@ -9,7 +9,8 @@
     { "path": "../database" },
     { "path": "../logger" },
     { "path": "../monitoring" },
-    { "path": "../rhie-client" }
+    { "path": "../rhie-client" },
+    { "path": "../worker-framework" }
   ],
   "include": ["src/**/*"]
 }

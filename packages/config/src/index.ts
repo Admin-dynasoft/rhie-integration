@@ -22,7 +22,13 @@ export type {
   ProcessingMode,
   FacilityProcessingState,
   CoordinatorState,
+  WorkerHostConfig,
+  WorkerHostHealthState,
+  ClientRegistryConfig,
+  ClientRegistryExecutionMode,
 } from './types.js';
+
+export { ClientRegistryConfigSchema } from './client-registry.js';
 
 export {
   PlatformConfigSchema,

@@ -1,5 +1,6 @@
 import mysql, {
   type Pool,
+  type PoolConnection,
   type PoolOptions,
   type RowDataPacket,
   type ResultSetHeader,
@@ -29,7 +30,10 @@ export class DatabaseConnection {
     if (this.pool) {
       return;
     }
+    await this.createPool();
+  }
 
+  private async createPool(): Promise<void> {
     const poolOptions: PoolOptions = {
       host: this.config.host,
       port: this.config.port,
@@ -43,7 +47,6 @@ export class DatabaseConnection {
     };
 
     this.pool = mysql.createPool(poolOptions);
-
     const connection = await this.pool.getConnection();
     connection.release();
 
@@ -58,6 +61,12 @@ export class DatabaseConnection {
     );
   }
 
+  async reconnect(): Promise<void> {
+    await this.disconnect();
+    await this.createPool();
+    this.logger.info({ event: 'database_reconnected', databaseId: this.config.id }, 'Database reconnected');
+  }
+
   async disconnect(): Promise<void> {
     if (this.pool) {
       await this.pool.end();
@@ -69,49 +78,55 @@ export class DatabaseConnection {
     }
   }
 
-  async query<T extends RowDataPacket[]>(
-    sql: string,
-    params?: unknown[],
-  ): Promise<T> {
-    if (!this.pool) {
-      throw new Error(`Database not connected: ${this.config.id}`);
-    }
-
-    try {
-      const [rows] = await this.pool.query<T>(sql, params);
-      return rows;
-    } catch (error) {
-      this.logger.error(
-        {
-          event: 'database_error',
-          databaseId: this.config.id,
-          error: error instanceof Error ? error.message : String(error),
-        },
-        'Database query failed',
-      );
-      throw error;
-    }
+  async query<T extends RowDataPacket[]>(sql: string, params?: unknown[]): Promise<T> {
+    return this.withPool(async (pool) => {
+      try {
+        const [rows] = await pool.query<T>(sql, params);
+        return rows;
+      } catch (error) {
+        if (this.isConnectionError(error)) {
+          await this.reconnect();
+          const [rows] = await this.pool!.query<T>(sql, params);
+          return rows;
+        }
+        this.logQueryError(error);
+        throw error;
+      }
+    });
   }
 
   async execute(sql: string, params?: ExecuteValues): Promise<ResultSetHeader> {
-    if (!this.pool) {
-      throw new Error(`Database not connected: ${this.config.id}`);
-    }
+    return this.withPool(async (pool) => {
+      try {
+        const [result] = await pool.execute<ResultSetHeader>(sql, params);
+        return result;
+      } catch (error) {
+        if (this.isConnectionError(error)) {
+          await this.reconnect();
+          const [result] = await this.pool!.execute<ResultSetHeader>(sql, params);
+          return result;
+        }
+        this.logQueryError(error);
+        throw error;
+      }
+    });
+  }
 
-    try {
-      const [result] = await this.pool.execute<ResultSetHeader>(sql, params);
-      return result;
-    } catch (error) {
-      this.logger.error(
-        {
-          event: 'database_error',
-          databaseId: this.config.id,
-          error: error instanceof Error ? error.message : String(error),
-        },
-        'Database execute failed',
-      );
-      throw error;
-    }
+  async transaction<T>(fn: (connection: PoolConnection) => Promise<T>): Promise<T> {
+    return this.withPool(async (pool) => {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const result = await fn(connection);
+        await connection.commit();
+        return result;
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    });
   }
 
   async ping(): Promise<boolean> {
@@ -133,6 +148,32 @@ export class DatabaseConnection {
 
   isConnected(): boolean {
     return this.pool !== null;
+  }
+
+  private async withPool<T>(fn: (pool: Pool) => Promise<T>): Promise<T> {
+    if (!this.pool) {
+      throw new Error(`Database not connected: ${this.config.id}`);
+    }
+    return fn(this.pool);
+  }
+
+  private isConnectionError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      return msg.includes('connection') || msg.includes('econnreset') || msg.includes('protocol');
+    }
+    return false;
+  }
+
+  private logQueryError(error: unknown): void {
+    this.logger.error(
+      {
+        event: 'database_error',
+        databaseId: this.config.id,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Database operation failed',
+    );
   }
 }
 
@@ -172,8 +213,7 @@ export class DatabaseManager {
   }
 
   async disconnectAll(): Promise<void> {
-    const disconnects = Array.from(this.connections.values()).map((c) => c.disconnect());
-    await Promise.all(disconnects);
+    await Promise.all(Array.from(this.connections.values()).map((c) => c.disconnect()));
     this.connections.clear();
   }
 
@@ -184,6 +224,13 @@ export class DatabaseManager {
     }
     return results;
   }
+
+  async reconnect(id: string): Promise<void> {
+    const conn = this.connections.get(id);
+    if (conn) {
+      await conn.reconnect();
+    }
+  }
 }
 
-export type { RowDataPacket, ResultSetHeader };
+export type { RowDataPacket, ResultSetHeader, PoolConnection };

@@ -142,3 +142,59 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 
 **Decision:** TypeScript service uses YAML config (Phase 1 approach). Facility entries must be kept in sync with central DB. Optional future enhancement: config loader that reads from central DB at startup.
 
+---
+
+## ADR-019: Worker Framework Package (Phase 2.5)
+
+**Decision:** Extract worker lifecycle into `@rhie/worker-framework` with `AbstractWorker` base class and `WorkerHost` generic runner.
+
+**Rationale:** All services share identical execution patterns (loop, sleep, heartbeat, mode gating, shutdown). Subclasses only implement `processBatch()`.
+
+---
+
+## ADR-020: Single Worker Class with Mode Parameter (Phase 2.5)
+
+**Decision:** One worker implementation per service with `mode: 'online' | 'local'`. No duplicate online/local worker classes.
+
+**Rationale:** User requirement. ModeAwareWorker checks coordinator state. WorkerHost spawns instances per (type × mode × facility).
+
+---
+
+## ADR-021: Worker-Host App Pattern (Phase 2.5)
+
+**Decision:** Generic `apps/worker-host` loads worker factories from `services/registry` based on `WORKER_TYPES` env var. One PM2 process per service domain.
+
+**Rationale:** Eliminates duplicated app boilerplate. New services require only a `services/` package and PM2 config entry.
+
+---
+
+## ADR-022: Separate Health and Metrics Packages (Phase 2.5)
+
+**Decision:** Split `@rhie/health` (component health checks) and `@rhie/metrics` (worker runtime metrics) from `@rhie/monitoring`.
+
+**Rationale:** Health checks (healthy/degraded/offline) serve a different purpose than worker metrics (processed/failed/uptime). Coordinator consumes health; dashboard will consume metrics.
+
+---
+
+## ADR-023: Cross-Process Health via HTTP Polling (Phase 2.5)
+
+**Decision:** Coordinator polls worker-host `/health` endpoints. In-process health registry is not shared across PM2 processes.
+
+**Rationale:** Each worker-host runs in a separate process. HTTP polling is simple, requires no additional infrastructure, and works with PM2 deployment model.
+
+---
+
+## ADR-024: Graceful Shutdown with In-Flight Completion (Phase 2.5)
+
+**Decision:** `AbstractWorker.stop()` sets `stopping = true`, waits for current `processBatch()` to complete before exiting.
+
+**Rationale:** Prevents partial record processing during deployment restarts.
+
+---
+
+## ADR-025: Database Auto-Reconnect (Phase 2.5)
+
+**Decision:** `DatabaseConnection` detects connection errors and automatically reconnects before retrying the failed query.
+
+**Rationale:** Long-running workers must survive transient MySQL disconnections without manual restart.
+

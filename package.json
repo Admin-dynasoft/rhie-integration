@@ -1,22 +1,23 @@
 {
   "name": "rhie-integration-platform",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Medisoft RHIE Integration Platform — autonomous background services for Medisoft ↔ Rwanda HIE synchronization",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "services/*"
   ],
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist",
+    "clean": "tsc -b --clean && rm -rf apps/*/dist packages/*/dist services/*/dist",
     "dev:coordinator": "npm run start -w @rhie/coordinator",
-    "dev:client": "npm run start -w @rhie/client-service",
-    "dev:encounter-id": "npm run start -w @rhie/encounter-id-service",
-    "dev:visit": "npm run start -w @rhie/visit-service",
-    "dev:transfer": "npm run start -w @rhie/transfer-service",
-    "dev:observation": "npm run start -w @rhie/observation-service",
-    "lint": "eslint . --ext .ts",
+    "dev:worker-host": "npm run start -w @rhie/worker-host",
+    "dev:client-host": "SERVICE_NAME=client-registry-host WORKER_TYPES=client-registry HEALTH_PORT=9091 npm run start -w @rhie/worker-host",
+    "dev:encounter-host": "SERVICE_NAME=encounter-id-host WORKER_TYPES=encounter-id HEALTH_PORT=9092 npm run start -w @rhie/worker-host",
+    "dev:visit-host": "SERVICE_NAME=visit-encounter-host WORKER_TYPES=visit-encounter HEALTH_PORT=9093 npm run start -w @rhie/worker-host",
+    "dev:transfer-host": "SERVICE_NAME=transfer-encounter-host WORKER_TYPES=transfer-encounter HEALTH_PORT=9094 npm run start -w @rhie/worker-host",
+    "dev:observation-host": "SERVICE_NAME=observation-host WORKER_TYPES=observation HEALTH_PORT=9095 npm run start -w @rhie/worker-host",
     "typecheck": "tsc -b --pretty"
   },
   "engines": {

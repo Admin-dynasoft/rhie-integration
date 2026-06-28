@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "references": [
+    { "path": "../config" },
+    { "path": "../database" },
+    { "path": "../health" },
+    { "path": "../logger" },
+    { "path": "../metrics" },
+    { "path": "../retry" },
+    { "path": "../rhie-client" }
+  ],
+  "include": ["src/**/*"]
+}

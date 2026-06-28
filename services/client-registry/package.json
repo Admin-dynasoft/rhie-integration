@@ -1,0 +1,14 @@
+{
+  "name": "@rhie/service-client-registry",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@rhie/worker-framework": "*"
+  }
+}

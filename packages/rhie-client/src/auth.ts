@@ -2,6 +2,7 @@ import axios, {
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosError,
+  type AxiosBasicCredentials,
 } from 'axios';
 import type { RhieAuthConfig } from '@rhie/config';
 import type { Logger } from '@rhie/logger';
@@ -16,6 +17,16 @@ export class RhieAuthProvider {
     private readonly httpClient: AxiosInstance,
   ) {}
 
+  getAxiosAuth(): AxiosBasicCredentials | undefined {
+    if (this.authConfig.type === 'basic') {
+      return {
+        username: this.authConfig.username ?? '',
+        password: this.authConfig.password ?? '',
+      };
+    }
+    return undefined;
+  }
+
   async getAuthHeaders(): Promise<Record<string, string>> {
     switch (this.authConfig.type) {
       case 'bearer': {
@@ -23,10 +34,7 @@ export class RhieAuthProvider {
         return { Authorization: `Bearer ${token}` };
       }
       case 'basic': {
-        const credentials = Buffer.from(
-          `${this.authConfig.username}:${this.authConfig.password}`,
-        ).toString('base64');
-        return { Authorization: `Basic ${credentials}` };
+        return {};
       }
       case 'oauth2': {
         const token = await this.fetchOAuthToken();
@@ -79,6 +87,10 @@ export function formatApiError(error: unknown): string {
     return `HTTP ${status ?? 'unknown'}: ${JSON.stringify(data ?? error.message)}`;
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+export function isSuccessStatus(status: number): boolean {
+  return status >= 200 && status < 300;
 }
 
 export type { AxiosRequestConfig, AxiosError };

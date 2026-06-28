@@ -1,6 +1,6 @@
 {
   "name": "@rhie/coordinator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "./dist/index.js",
   "scripts": {
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@rhie/config": "*",
-    "@rhie/database": "*",
+    "@rhie/health": "*",
     "@rhie/logger": "*",
-    "@rhie/monitoring": "*",
-    "@rhie/shared": "*"
+    "@rhie/worker-framework": "*",
+    "axios": "^1.7.9"
   }
 }

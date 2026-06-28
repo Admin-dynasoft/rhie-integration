@@ -1,0 +1,18 @@
+{
+  "name": "@rhie/worker-host",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "dev": "tsc -b && node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@rhie/config": "*",
+    "@rhie/logger": "*",
+    "@rhie/services-registry": "*",
+    "@rhie/worker-framework": "*"
+  }
+}

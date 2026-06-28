@@ -8,4 +8,4 @@ export {
 } from './helpers.js';
 export type { RhieStatusUpdate } from './helpers.js';
 
-export type { RowDataPacket, ResultSetHeader } from './connection.js';
+export type { RowDataPacket, ResultSetHeader, PoolConnection } from './connection.js';

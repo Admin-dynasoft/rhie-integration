@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "references": [
+    { "path": "../../packages/worker-framework" },
+    { "path": "../client-registry" },
+    { "path": "../encounter-id" },
+    { "path": "../visit-encounter" },
+    { "path": "../transfer-encounter" },
+    { "path": "../observation" }
+  ],
+  "include": ["src/**/*"]
+}

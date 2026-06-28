@@ -1,0 +1,19 @@
+{
+  "name": "@rhie/services-registry",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@rhie/worker-framework": "*",
+    "@rhie/service-client-registry": "*",
+    "@rhie/service-encounter-id": "*",
+    "@rhie/service-visit-encounter": "*",
+    "@rhie/service-transfer-encounter": "*",
+    "@rhie/service-observation": "*"
+  }
+}

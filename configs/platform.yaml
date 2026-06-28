@@ -3,6 +3,9 @@ environment: development
 logging:
   level: info
   prettyPrint: true
+  fileEnabled: false
+  filePath: ./logs/platform.log
+  jsonFormat: true
 
 retry:
   maxAttempts: 3
@@ -22,18 +25,37 @@ coordinator:
   onlineUnavailableThresholdMs: 60000
   serviceHeartbeatTimeoutMs: 45000
   stateFilePath: ./data/coordinator-state.json
+  autoRestartFailedWorkers: true
+  healthPollIntervalMs: 30000
+  workerHostEndpoints:
+    - name: client-registry-host
+      healthUrl: http://127.0.0.1:9091/health
+      metricsUrl: http://127.0.0.1:9191/metrics
+    - name: encounter-id-host
+      healthUrl: http://127.0.0.1:9092/health
+      metricsUrl: http://127.0.0.1:9192/metrics
+    - name: visit-encounter-host
+      healthUrl: http://127.0.0.1:9093/health
+      metricsUrl: http://127.0.0.1:9193/metrics
+    - name: transfer-encounter-host
+      healthUrl: http://127.0.0.1:9094/health
+      metricsUrl: http://127.0.0.1:9194/metrics
+    - name: observation-host
+      healthUrl: http://127.0.0.1:9095/health
+      metricsUrl: http://127.0.0.1:9195/metrics
 
 monitoring:
   healthPort: 9090
   metricsEnabled: true
 
 rhie:
-  baseUrl: https://rhie.example.gov.rw/api
+  baseUrl: https://devhie.moh.gov.rw:5000
   timeoutMs: 30000
   auth:
-    type: bearer
-    token: ${RHIE_API_TOKEN}
-  clientRegistryPath: /client-registry
+    type: basic
+    username: MRS_MEDISOFT
+    password: ${RHIE_PASSWORD}
+  clientRegistryPath: /clientregistry/Patient
   encounterIdPath: /encounters/id
   visitEncounterPath: /encounters/visit
   transferEncounterPath: /encounters/transfer

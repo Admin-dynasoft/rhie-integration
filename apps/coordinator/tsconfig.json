@@ -6,10 +6,9 @@
   },
   "references": [
     { "path": "../../packages/config" },
-    { "path": "../../packages/database" },
+    { "path": "../../packages/health" },
     { "path": "../../packages/logger" },
-    { "path": "../../packages/monitoring" },
-    { "path": "../../packages/shared" }
+    { "path": "../../packages/worker-framework" }
   ],
   "include": ["src/**/*"]
 }

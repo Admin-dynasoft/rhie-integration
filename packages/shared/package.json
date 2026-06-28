@@ -1,15 +1,9 @@
 {
   "name": "@rhie/shared",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
   "scripts": {
     "build": "tsc -b",
     "clean": "rm -rf dist"
@@ -19,6 +13,7 @@
     "@rhie/database": "*",
     "@rhie/logger": "*",
     "@rhie/monitoring": "*",
-    "@rhie/rhie-client": "*"
+    "@rhie/rhie-client": "*",
+    "@rhie/worker-framework": "*"
   }
 }

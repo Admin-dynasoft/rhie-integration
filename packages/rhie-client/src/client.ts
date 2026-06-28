@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import type { RhieConfig, RetryConfig } from '@rhie/config';
 import type { Logger } from '@rhie/logger';
 import { RetryManager } from '@rhie/retry';
-import { RhieAuthProvider, formatApiError, isAxiosError } from './auth.js';
+import { RhieAuthProvider, formatApiError, isAxiosError, isSuccessStatus } from './auth.js';
 
 export interface RhieClientOptions {
   config: RhieConfig;
@@ -17,6 +17,11 @@ export interface RhieApiResponse<T = unknown> {
   statusCode?: number;
 }
 
+export interface RhieRequestOptions {
+  contentType?: string;
+  accept?: string;
+}
+
 export class RhieClient {
   private readonly http: AxiosInstance;
   private readonly authProvider: RhieAuthProvider;
@@ -28,13 +33,15 @@ export class RhieClient {
     this.config = options.config;
     this.logger = options.logger;
 
+    this.authProvider = new RhieAuthProvider(options.config.auth, this.logger, axios.create());
+
     this.http = axios.create({
       baseURL: options.config.baseUrl,
       timeout: options.config.timeoutMs,
-      headers: { 'Content-Type': 'application/json' },
+      auth: this.authProvider.getAxiosAuth(),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });
 
-    this.authProvider = new RhieAuthProvider(options.config.auth, this.logger, this.http);
     this.retryManager = new RetryManager({
       config: options.retryConfig,
       logger: this.logger,
@@ -42,38 +49,60 @@ export class RhieClient {
     });
   }
 
-  async request<T>(method: string, path: string, data?: unknown): Promise<RhieApiResponse<T>> {
+  async ping(): Promise<boolean> {
+    try {
+      await this.http.get('/', { timeout: 5000, validateStatus: () => true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async request<T>(
+    method: string,
+    path: string,
+    data?: unknown,
+    options?: RhieRequestOptions,
+  ): Promise<RhieApiResponse<T>> {
     const result = await this.retryManager.execute(async () => {
       const authHeaders = await this.authProvider.getAuthHeaders();
       const requestConfig: AxiosRequestConfig = {
         method,
         url: path,
-        headers: authHeaders,
+        headers: {
+          ...authHeaders,
+          ...(options?.contentType && { 'Content-Type': options.contentType }),
+          ...(options?.accept && { Accept: options.accept }),
+        },
         data,
+        validateStatus: () => true,
       };
 
       const response = await this.http.request<T>(requestConfig);
+
+      if (!isSuccessStatus(response.status)) {
+        throw new Error(formatApiError({ response, message: 'Request failed' }));
+      }
+
       return response.data;
     });
 
     if (result.success) {
-      this.logger.info(
-        { event: 'upload_success', method, path },
-        `RHIE API call succeeded: ${method} ${path}`,
-      );
+      this.logger.info({ event: 'rhie_request_success', method, path }, `RHIE API succeeded: ${method} ${path}`);
       return { success: true, data: result.result };
     }
 
     const errorMessage = formatApiError(result.error);
     this.logger.error(
       {
-        event: 'upload_failed',
+        event: 'rhie_request_failed',
         method,
         path,
         error: errorMessage,
         attempts: result.attempts,
+        permanent: result.permanent,
       },
-      `RHIE API call failed: ${method} ${path}`,
+      `RHIE API failed: ${method} ${path}`,
     );
 
     return {
@@ -83,9 +112,15 @@ export class RhieClient {
     };
   }
 
-  // API method stubs — business logic mapping will be implemented in service layer
+  async uploadFhirResource(path: string, payload: unknown): Promise<RhieApiResponse> {
+    return this.request('POST', path, payload, {
+      contentType: 'application/fhir+json',
+      accept: 'application/fhir+json',
+    });
+  }
+
   async uploadClientRegistry(payload: unknown): Promise<RhieApiResponse> {
-    return this.request('POST', this.config.clientRegistryPath, payload);
+    return this.uploadFhirResource(this.config.clientRegistryPath, payload);
   }
 
   async generateEncounterId(payload: unknown): Promise<RhieApiResponse> {
