@@ -132,11 +132,23 @@ Restart services to pick up the new worker.
 - [Project Playbook](docs/playbook.md)
 - [Configuration Guide](docs/configuration.md)
 
+### Client Registry (Phase 2 Analysis)
+
+- [Client Registry Analysis](docs/client-registry-analysis.md)
+- [Business Rules](docs/client-registry-business-rules.md)
+- [Database Analysis](docs/client-registry-database-analysis.md)
+- [RHIE API Analysis](docs/client-registry-rhie-api-analysis.md)
+- [Payload Mapping](docs/client-registry-payload-mapping.md)
+- [Migration Strategy](docs/client-registry-migration-strategy.md)
+- [Service Design](docs/client-registry-service-design.md)
+
 ## Current Status
 
 **Phase 1 (complete):** Project structure, shared libraries, worker framework, coordinator, service lifecycle, configuration system, health monitoring.
 
-**Phase 2 (next):** Business logic — database queries, RHIE payload mapping, status field updates per Medisoft schema.
+**Phase 2a (complete):** Client Registry reverse-engineering — full analysis of PHP implementation documented.
+
+**Phase 2b (next):** Implement Client Registry TypeScript service preserving exact business logic.
 
 ## Technology Stack
 

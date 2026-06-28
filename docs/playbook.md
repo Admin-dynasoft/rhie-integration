@@ -78,8 +78,67 @@ Architectural decisions and rationale for the Medisoft RHIE Integration Platform
 
 ## Future Decisions (Phase 2+)
 
-- **F-001:** Map exact Medisoft table/column names for RHIE status fields
-- **F-002:** Define RHIE API payload schemas per endpoint
+- **F-001:** ~~Map exact Medisoft table/column names for RHIE status fields~~ → **Done** — see `docs/client-registry-database-analysis.md`
+- **F-002:** ~~Define RHIE API payload schemas per endpoint~~ → **Done** — see `docs/client-registry-payload-mapping.md`
 - **F-003:** Implement duplicate upload prevention via database locking or status transitions
 - **F-004:** Add integration tests against Medisoft schema fixtures
 - **F-005:** Evaluate coordinator state in shared DB table for multi-host deployment
+
+---
+
+## ADR-013: Client Registry Uses HTTP Basic Auth (Phase 2 Finding)
+
+**Finding:** Production PHP code uses `CURLOPT_USERPWD` (HTTP Basic Auth), not Bearer or OAuth2.
+
+**Impact:** `@rhie/rhie-client` must support `auth.type: basic` before Client Registry implementation.
+
+**Source:** `ClientRegistryController.sendToHIE()`, credentials in `config/hie.php`.
+
+---
+
+## ADR-014: Preserve Exact FHIR Payload Quirks (Phase 2 Finding)
+
+**Decision:** TypeScript payload builder must reproduce all production quirks exactly:
+
+- `deceasedBoolean: true` (hardcoded)
+- Name fields swapped (`given_name` → FHIR `family`, `family_name` → FHIR `given`)
+- Phone prefix `+25` (not `+250`)
+- Empty `extension: [{}]` object
+- `id` field set to UPID (non-standard FHIR)
+
+**Rationale:** HIE registry accepts this exact format. Changing any field risks rejection.
+
+---
+
+## ADR-015: upid_patients.status Is the Sole Tracking Field (Phase 2 Finding)
+
+**Finding:** Client Registry reads/writes only `upid_patients.status` (values 0–3). No separate `rhie_status` column, no response ID storage, no upload timestamps.
+
+**Impact:** TypeScript repository updates only this column. Status `2` excludes records from all selection queries.
+
+---
+
+## ADR-016: Referral Filter Is Active in Production Batch (Phase 2 Finding)
+
+**Finding:** `client_registry_batch.php` INNER JOINs `referral` with comment "TESTING MODE." This filter is active in the committed code.
+
+**Decision:** Make referral requirement configurable in TypeScript service. Default to `true` to match current PHP behavior until stakeholders confirm removal.
+
+**Open question:** Confirm with operations team whether referral filter is intentional for production.
+
+---
+
+## ADR-017: patient_id vs client_id Ambiguity (Phase 2 Finding)
+
+**Finding:** Batch selects by `upid_patients.patient_id` but Model queries by `upid_patients.client_id`. Both are passed as `$clientID`.
+
+**Decision:** Verify against live Medisoft schema before implementation. Document both column names; use the same column the PHP code uses in each query context.
+
+---
+
+## ADR-018: Central DB vs Config File for Facilities (Phase 2 Finding)
+
+**Finding:** PHP reads facility list from central `medisoft_hie.health_facilities`. Phase 1 platform uses YAML `onlineDatabases`.
+
+**Decision:** TypeScript service uses YAML config (Phase 1 approach). Facility entries must be kept in sync with central DB. Optional future enhancement: config loader that reads from central DB at startup.
+
