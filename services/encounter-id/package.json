@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -b",
+    "build": "node init && tsc -b",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "test": "node --import tsx --test src/**/*.test.ts"
   },

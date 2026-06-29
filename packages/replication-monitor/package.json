@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "node init && tsc -b",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "test": "node --import tsx --test src/types.test.ts"
   },
