@@ -60,3 +60,69 @@ export interface ComplaintUploadResult {
   http_code?: number;
   response?: unknown;
 }
+
+export interface PendingDiagnosisEncounterRow {
+  client_id: number;
+  date: string;
+  upid: string;
+  observation_encount_id: string;
+}
+
+export interface DiagnosisEncounterDataRow {
+  reference_encount_id: string;
+  upid: string;
+  client_id: number;
+  main_date: string;
+  observation_encount_id: string;
+  source_id: number;
+  main_display: string;
+  display: string;
+  div_display: string;
+  full_description: string | null;
+  order_time: string;
+  practitioner_name: string | null;
+  code: string;
+}
+
+export interface FhirDiagnosisConditionPayload {
+  resourceType: 'Condition';
+  id: string;
+  clinicalStatus: {
+    coding: Array<{
+      system: string;
+      code: string;
+    }>;
+  };
+  verificationStatus: {
+    coding: Array<{
+      system: string;
+      code: string;
+    }>;
+  };
+  code: {
+    coding: Array<{
+      system: string;
+      code: string;
+      display: string;
+    }>;
+  };
+  subject: {
+    reference: string;
+  };
+  encounter: {
+    reference: string;
+  };
+  onsetDateTime: string;
+  asserter: {
+    reference: string;
+    display: string;
+  };
+}
+
+export interface DiagnosisUploadResult {
+  success: boolean;
+  resourceType: string;
+  observation_encount_id: string;
+  http_code?: number;
+  response?: unknown;
+}

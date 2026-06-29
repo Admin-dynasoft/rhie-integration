@@ -166,10 +166,12 @@ rhie:
 | File | Tests |
 |------|-------|
 | complaint-payload.builder.test.ts | Payload + date + display constant |
-| complaint-encounter.processor.test.ts | UPID skip, shadow, display filter |
+| complaint-encounter.processor.test.ts | UPID skip, shadow, display filter, batch, empty dataset |
+| complaint-encounter.processor.production.test.ts | Success-only mark, failure no-mark |
+| complaint-encounter.rhie.test.ts | Endpoint, headers, HTTP status handling |
 | sql.parity.test.ts | SQL exact match |
 
-**Result:** 10/10 tests passing.
+**Result:** 19/19 tests passing.
 
 ---
 

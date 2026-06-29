@@ -8,42 +8,34 @@ import {
 import axios, { type AxiosInstance } from 'axios';
 import { rhieSanitizeUpid, rhieUpidIsExcluded } from '@rhie/shared';
 import type { BatchResult } from '@rhie/worker-framework';
-import { ComplaintEncounterRepository } from '../repository/complaint-encounter.repository.js';
+import { DiagnosisEncounterRepository } from '../repository/diagnosis-encounter.repository.js';
 import {
-  ComplaintPayloadBuilder,
-  COMPLAINT_DISPLAY,
-  serializeComplaintPayload,
-} from './complaint-payload.builder.js';
-import type { ComplaintUploadResult } from './types.js';
+  DiagnosisPayloadBuilder,
+  DIAGNOSIS_DISPLAY,
+  serializeDiagnosisPayload,
+} from './diagnosis-payload.builder.js';
+import type { DiagnosisUploadResult } from './types.js';
+import type { UploadShrResourceFn } from './complaint-encounter.processor.js';
 
-export type UploadShrResourceFn = (
-  http: AxiosInstance,
-  authProvider: RhieAuthProvider,
-  resourceType: string,
-  payload: Record<string, unknown>,
-  logger: Logger,
-) => Promise<ShrResourceUploadResult>;
-
-export interface ComplaintEncounterProcessorDeps {
-  repository: ComplaintEncounterRepository;
-  payloadBuilder: ComplaintPayloadBuilder;
+export interface DiagnosisEncounterProcessorDeps {
+  repository: DiagnosisEncounterRepository;
+  payloadBuilder: DiagnosisPayloadBuilder;
   logger: Logger;
   config: ObservationConfig;
   rhieConfig: RhieConfig;
   facilityId?: string;
   facilityCode?: string;
-  /** Injectable for tests — defaults to uploadShrResourceOnce (PHP send() parity) */
   uploadShrResource?: UploadShrResourceFn;
 }
 
-/** Business logic port of PHP UploadEncounterController complaint upload path */
-export type ComplaintEncounterService = ComplaintEncounterProcessor;
+/** Business logic port of PHP UploadEncounterController diagnostic upload path */
+export type DiagnosisEncounterService = DiagnosisEncounterProcessor;
 
-export class ComplaintEncounterProcessor {
+export class DiagnosisEncounterProcessor {
   private readonly http: AxiosInstance;
   private readonly authProvider: RhieAuthProvider;
 
-  constructor(private readonly deps: ComplaintEncounterProcessorDeps) {
+  constructor(private readonly deps: DiagnosisEncounterProcessorDeps) {
     this.http = axios.create({
       baseURL: deps.rhieConfig.baseUrl,
       timeout: deps.rhieConfig.timeoutMs,
@@ -60,12 +52,12 @@ export class ComplaintEncounterProcessor {
     );
   }
 
-  async processPendingComplaintEncounters(batchSize: number): Promise<BatchResult> {
-    const rows = await this.deps.repository.findPendingComplaintEncounters(batchSize);
+  async processPendingDiagnosisEncounters(batchSize: number): Promise<BatchResult> {
+    const rows = await this.deps.repository.findPendingDiagnosisEncounters(batchSize);
 
     this.deps.logger.debug(
-      { event: 'poll_records', pendingComplaints: rows.length, batchSize },
-      `Found ${rows.length} pending complaint encounters`,
+      { event: 'poll_records', pendingDiagnoses: rows.length, batchSize },
+      `Found ${rows.length} pending diagnosis encounters`,
     );
 
     if (rows.length === 0) {
@@ -85,7 +77,7 @@ export class ComplaintEncounterProcessor {
       seen.add(key);
 
       try {
-        const outcome = await this.uploadComplaints(row.client_id, row.date);
+        const outcome = await this.uploadDiagnoses(row.client_id, row.date);
         if (outcome.uploaded > 0) {
           processed += 1;
         } else if (outcome.attempted === 0) {
@@ -97,13 +89,13 @@ export class ComplaintEncounterProcessor {
         failed += 1;
         this.deps.logger.error(
           {
-            event: 'complaint_upload_error',
+            event: 'diagnosis_upload_error',
             clientId: row.client_id,
             date: row.date,
             facilityId: this.deps.facilityId,
             error: error instanceof Error ? error.message : String(error),
           },
-          `Complaint upload error for client ${row.client_id}`,
+          `Diagnosis upload error for client ${row.client_id}`,
         );
       }
     }
@@ -112,24 +104,24 @@ export class ComplaintEncounterProcessor {
   }
 
   /**
-   * Port of UploadEncounterController::uploadObservations() complaint branch.
+   * Port of UploadEncounterController::uploadObservations() diagnostic branch.
    */
-  async uploadComplaints(
+  async uploadDiagnoses(
     clientId: number,
     date: string,
-  ): Promise<{ uploaded: number; attempted: number; results: ComplaintUploadResult[] }> {
+  ): Promise<{ uploaded: number; attempted: number; results: DiagnosisUploadResult[] }> {
     this.deps.logger.debug(
       {
-        event: 'complaint_upload_start',
+        event: 'diagnosis_upload_start',
         clientId,
         date,
         facilityId: this.deps.facilityId,
       },
-      `Complaint upload: client=${clientId} date=${date}`,
+      `Diagnosis upload: client=${clientId} date=${date}`,
     );
 
-    const observations = await this.deps.repository.getComplaintEncounterData(date, clientId);
-    const results: ComplaintUploadResult[] = [];
+    const observations = await this.deps.repository.getDiagnosisEncounterData(date, clientId);
+    const results: DiagnosisUploadResult[] = [];
     let uploaded = 0;
     let attempted = 0;
 
@@ -141,7 +133,7 @@ export class ComplaintEncounterProcessor {
         continue;
       }
 
-      if (observation.display !== COMPLAINT_DISPLAY) {
+      if (observation.display !== DIAGNOSIS_DISPLAY) {
         continue;
       }
 
@@ -155,14 +147,14 @@ export class ComplaintEncounterProcessor {
             clientId,
             date,
             encountId: observation.observation_encount_id,
-            payload: serializeComplaintPayload(payload),
+            payload: serializeDiagnosisPayload(payload),
           },
-          'Shadow mode — complaint observation upload skipped',
+          'Shadow mode — diagnosis condition upload skipped',
         );
 
         results.push({
           success: true,
-          resourceType: 'Observation',
+          resourceType: 'Condition',
           observation_encount_id: observation.observation_encount_id,
           response: { shadow: true },
         });
@@ -171,17 +163,17 @@ export class ComplaintEncounterProcessor {
       }
 
       const upload = this.deps.uploadShrResource ?? uploadShrResourceOnce;
-      const uploadResult = await upload(
+      const uploadResult: ShrResourceUploadResult = await upload(
         this.http,
         this.authProvider,
-        'Observation',
+        'Condition',
         payload as unknown as Record<string, unknown>,
         this.deps.logger,
       );
 
-      const result: ComplaintUploadResult = {
+      const result: DiagnosisUploadResult = {
         success: uploadResult.success,
-        resourceType: 'Observation',
+        resourceType: 'Condition',
         observation_encount_id: observation.observation_encount_id,
         http_code: uploadResult.httpCode,
         response: uploadResult.data,
@@ -193,21 +185,21 @@ export class ComplaintEncounterProcessor {
         uploaded += 1;
         this.deps.logger.debug(
           {
-            event: 'complaint_marked_uploaded',
+            event: 'diagnosis_marked_uploaded',
             encountId: observation.observation_encount_id,
             httpCode: uploadResult.httpCode,
           },
-          'Complaint observation marked uploaded',
+          'Diagnosis condition marked uploaded',
         );
       } else {
         this.deps.logger.error(
           {
-            event: 'complaint_upload_failed',
+            event: 'diagnosis_upload_failed',
             encountId: observation.observation_encount_id,
             httpCode: uploadResult.httpCode,
             response: uploadResult.data,
           },
-          'Complaint observation upload failed',
+          'Diagnosis condition upload failed',
         );
       }
     }

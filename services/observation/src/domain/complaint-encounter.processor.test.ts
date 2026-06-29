@@ -103,4 +103,63 @@ describe('ComplaintEncounterProcessor', () => {
     const result = await processor.uploadComplaints(1, '2026-06-24');
     assert.equal(result.attempted, 0);
   });
+
+  it('returns empty results when no complaint rows exist', async () => {
+    const processor = createProcessor(
+      {
+        getComplaintEncounterData: mock.fn(async () => []),
+      },
+      { executionMode: 'production' },
+    );
+
+    const result = await processor.uploadComplaints(1, '2026-06-24');
+    assert.equal(result.uploaded, 0);
+    assert.equal(result.attempted, 0);
+    assert.deepEqual(result.results, []);
+  });
+
+  it('processPendingComplaintEncounters returns zeros for empty batch', async () => {
+    const processor = createProcessor(
+      {
+        findPendingComplaintEncounters: mock.fn(async () => []),
+      },
+      { executionMode: 'shadow' },
+    );
+
+    const batch = await processor.processPendingComplaintEncounters(10);
+    assert.deepEqual(batch, { processed: 0, failed: 0, skipped: 0 });
+  });
+
+  it('deduplicates batch rows by client_id and date', async () => {
+    const getComplaintEncounterData = mock.fn(async () => []);
+    const processor = createProcessor(
+      {
+        findPendingComplaintEncounters: mock.fn(async () => [
+          { client_id: 1, date: '2026-06-24', upid: '1234567890123456', observation_encount_id: 'a' },
+          { client_id: 1, date: '2026-06-24', upid: '1234567890123456', observation_encount_id: 'b' },
+        ]),
+        getComplaintEncounterData,
+      },
+      { executionMode: 'shadow' },
+    );
+
+    await processor.processPendingComplaintEncounters(10);
+    assert.equal(getComplaintEncounterData.mock.callCount(), 1);
+  });
+
+  it('counts batch row as skipped when no upload attempted', async () => {
+    const processor = createProcessor(
+      {
+        findPendingComplaintEncounters: mock.fn(async () => [
+          { client_id: 1, date: '2026-06-24', upid: '1234567890123456', observation_encount_id: 'a' },
+        ]),
+        getComplaintEncounterData: mock.fn(async () => []),
+      },
+      { executionMode: 'shadow' },
+    );
+
+    const batch = await processor.processPendingComplaintEncounters(10);
+    assert.equal(batch.skipped, 1);
+    assert.equal(batch.processed, 0);
+  });
 });
