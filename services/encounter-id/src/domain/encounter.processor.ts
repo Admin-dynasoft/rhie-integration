@@ -19,9 +19,15 @@ export interface EncounterProcessorDeps {
   payloadBuilder: EncounterPayloadBuilder;
   logger: Logger;
   config: EncounterIdConfig;
+  facilityId?: string;
+  facilityCode?: string;
   uuidFactory?: () => string;
   now?: () => Date;
 }
+
+/** Service-layer alias — business logic port of PHP EncounterController */
+export type EncounterIdService = EncounterProcessor;
+export type EncounterIdServiceDeps = EncounterProcessorDeps;
 
 export class EncounterProcessor {
   private readonly uuidFactory: () => string;
@@ -90,14 +96,7 @@ export class EncounterProcessor {
         );
       } catch (error) {
         failed += 1;
-        this.deps.logger.error(
-          {
-            event: 'generator_error',
-            generator: generator.name,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          `${generator.name} encounter generation failed`,
-        );
+        this.logError('generator_error', generator.name, {}, error);
       }
     }
 
@@ -106,6 +105,39 @@ export class EncounterProcessor {
 
   private isShadowMode(): boolean {
     return this.deps.config.executionMode === 'shadow';
+  }
+
+  private logError(
+    event: string,
+    generator: EncounterGeneratorName,
+    context: Record<string, unknown>,
+    error: unknown,
+  ): void {
+    this.deps.logger.error(
+      {
+        event,
+        generator,
+        facilityId: this.deps.facilityId,
+        facilityCode: this.deps.facilityCode,
+        ...context,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      'Encounter ID processing failed',
+    );
+  }
+
+  private async runRecordSafe<T>(
+    generator: EncounterGeneratorName,
+    context: Record<string, unknown>,
+    fn: () => Promise<T>,
+  ): Promise<{ ok: true; value: T } | { ok: false }> {
+    try {
+      return { ok: true, value: await fn() };
+    } catch (error) {
+      this.logError('record_error', generator, context, error);
+      return { ok: false };
+    }
   }
 
   private sanitizeUpid(raw: string): string | null {
@@ -211,47 +243,55 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const group of grouped.values()) {
       const first = group[0];
-      const upid = this.sanitizeUpid(first.upid);
-      if (!upid) {
-        skipped += 1;
-        continue;
-      }
+      const outcome = await this.runRecordSafe('visit', { clientId: first.client_id, date: first.date }, async () => {
+        const upid = this.sanitizeUpid(first.upid);
+        if (!upid) {
+          return 'skipped' as const;
+        }
 
-      const exists = await this.deps.repository.mainEncounterExists(
-        upid,
-        first.client_id,
-        first.date,
-        'VISIT_ENCOUNTER',
-      );
+        const exists = await this.deps.repository.mainEncounterExists(
+          upid,
+          first.client_id,
+          first.date,
+          'VISIT_ENCOUNTER',
+        );
 
-      if (exists) {
-        skipped += 1;
-        continue;
-      }
+        if (exists) {
+          return 'skipped' as const;
+        }
 
-      const uploadedAt = phpTimestamp(this.now());
-      const payload = this.deps.payloadBuilder.buildMainEncounter({
-        encountId: this.uuidFactory(),
-        type: 'VISIT_ENCOUNTER',
-        upid,
-        clientId: first.client_id,
-        date: first.date,
-        time: first.time,
-        rhieUploadedAt: uploadedAt,
+        const uploadedAt = phpTimestamp(this.now());
+        const payload = this.deps.payloadBuilder.buildMainEncounter({
+          encountId: this.uuidFactory(),
+          type: 'VISIT_ENCOUNTER',
+          upid,
+          clientId: first.client_id,
+          date: first.date,
+          time: first.time,
+          rhieUploadedAt: uploadedAt,
+        });
+
+        const result = await this.persistMainEncounter('visit', payload, async () => {
+          await this.deps.repository.markVisitAsUploaded(first.client_id);
+        });
+
+        return result === 'processed' ? ('processed' as const) : ('skipped' as const);
       });
 
-      const result = await this.persistMainEncounter('visit', payload, async () => {
-        await this.deps.repository.markVisitAsUploaded(first.client_id);
-      });
-
-      if (result === 'processed') processed += 1;
-      else skipped += 1;
+      if (!outcome.ok) {
+        failed += 1;
+      } else if (outcome.value === 'processed') {
+        processed += 1;
+      } else {
+        skipped += 1;
+      }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateTransferEncounters(startDate: string): Promise<GeneratorResult> {
@@ -260,44 +300,56 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const group of grouped.values()) {
       const first = group[0];
-      const upid = this.sanitizeUpid(first.upid);
-      if (!upid) {
-        skipped += 1;
-        continue;
-      }
+      const outcome = await this.runRecordSafe(
+        'transfer',
+        { clientId: first.client_id, date: first.date },
+        async () => {
+          const upid = this.sanitizeUpid(first.upid);
+          if (!upid) {
+            return 'skipped' as const;
+          }
 
-      const exists = await this.deps.repository.mainEncounterExists(
-        upid,
-        first.client_id,
-        first.date,
-        'E_TRANSFER',
+          const exists = await this.deps.repository.mainEncounterExists(
+            upid,
+            first.client_id,
+            first.date,
+            'E_TRANSFER',
+          );
+
+          if (exists) {
+            return 'skipped' as const;
+          }
+
+          const uploadedAt = phpTimestamp(this.now());
+          const payload = this.deps.payloadBuilder.buildMainEncounter({
+            encountId: this.uuidFactory(),
+            type: 'E_TRANSFER',
+            upid,
+            clientId: first.client_id,
+            date: first.date,
+            time: first.time,
+            rhieUploadedAt: uploadedAt,
+          });
+
+          const result = await this.persistMainEncounter('transfer', payload);
+          return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+        },
       );
 
-      if (exists) {
+      if (!outcome.ok) {
+        failed += 1;
+      } else if (outcome.value === 'processed') {
+        processed += 1;
+      } else {
         skipped += 1;
-        continue;
       }
-
-      const uploadedAt = phpTimestamp(this.now());
-      const payload = this.deps.payloadBuilder.buildMainEncounter({
-        encountId: this.uuidFactory(),
-        type: 'E_TRANSFER',
-        upid,
-        clientId: first.client_id,
-        date: first.date,
-        time: first.time,
-        rhieUploadedAt: uploadedAt,
-      });
-
-      const result = await this.persistMainEncounter('transfer', payload);
-      if (result === 'processed') processed += 1;
-      else skipped += 1;
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateOrdersEncounters(
@@ -313,6 +365,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const group of grouped.values()) {
       const first = group[0];
@@ -323,29 +376,42 @@ export class EncounterProcessor {
       }
 
       for (const order of group) {
-        const uploadedAt = phpTimestamp(this.now());
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: typeDisplay,
-          upid,
-          clientId: order.client_id,
-          sourceId: order.order_id,
-          sourceTable: 'orders',
-          date: order.date,
-          time: order.time,
-          rhieUploadedAt: uploadedAt,
-        });
+        const outcome = await this.runRecordSafe(
+          generator,
+          { clientId: order.client_id, orderId: order.order_id, date: order.date },
+          async () => {
+            const uploadedAt = phpTimestamp(this.now());
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: typeDisplay,
+              upid,
+              clientId: order.client_id,
+              sourceId: order.order_id,
+              sourceTable: 'orders',
+              date: order.date,
+              time: order.time,
+              rhieUploadedAt: uploadedAt,
+            });
 
-        const result = await this.persistPatientEncounter(generator, payload, async () => {
-          await this.deps.repository.markOrderAsUploaded(order.order_id);
-        });
+            const result = await this.persistPatientEncounter(generator, payload, async () => {
+              await this.deps.repository.markOrderAsUploaded(order.order_id);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateLabEncounters(startDate: string): Promise<GeneratorResult> {
@@ -354,6 +420,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const group of grouped.values()) {
       const first = group[0];
@@ -364,29 +431,42 @@ export class EncounterProcessor {
       }
 
       for (const lab of group) {
-        const uploadedAt = phpTimestamp(this.now());
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'lab',
-          upid,
-          clientId: lab.client_id,
-          sourceId: lab.test_id,
-          sourceTable: 'lab_results',
-          date: lab.date,
-          time: lab.time,
-          rhieUploadedAt: uploadedAt,
-        });
+        const outcome = await this.runRecordSafe(
+          'lab',
+          { clientId: lab.client_id, testId: lab.test_id, date: lab.date },
+          async () => {
+            const uploadedAt = phpTimestamp(this.now());
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'lab',
+              upid,
+              clientId: lab.client_id,
+              sourceId: lab.test_id,
+              sourceTable: 'lab_results',
+              date: lab.date,
+              time: lab.time,
+              rhieUploadedAt: uploadedAt,
+            });
 
-        const result = await this.persistPatientEncounter('lab', payload, async () => {
-          await this.deps.repository.markLabAsUploaded(lab.test_id);
-        });
+            const result = await this.persistPatientEncounter('lab', payload, async () => {
+              await this.deps.repository.markLabAsUploaded(lab.test_id);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateLabRequestEncounters(startDate: string): Promise<GeneratorResult> {
@@ -395,6 +475,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const group of grouped.values()) {
       const first = group[0];
@@ -405,29 +486,42 @@ export class EncounterProcessor {
       }
 
       for (const labRequest of group) {
-        const uploadedAt = phpTimestamp(this.now());
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'lab_request',
-          upid,
-          clientId: labRequest.client_id,
-          sourceId: labRequest.order_id,
-          sourceTable: 'orders',
-          date: labRequest.date,
-          time: labRequest.time,
-          rhieUploadedAt: uploadedAt,
-        });
+        const outcome = await this.runRecordSafe(
+          'lab_request',
+          { clientId: labRequest.client_id, orderId: labRequest.order_id, date: labRequest.date },
+          async () => {
+            const uploadedAt = phpTimestamp(this.now());
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'lab_request',
+              upid,
+              clientId: labRequest.client_id,
+              sourceId: labRequest.order_id,
+              sourceTable: 'orders',
+              date: labRequest.date,
+              time: labRequest.time,
+              rhieUploadedAt: uploadedAt,
+            });
 
-        const result = await this.persistPatientEncounter('lab_request', payload, async () => {
-          await this.deps.repository.markOrderAsUploaded(labRequest.order_id);
-        });
+            const result = await this.persistPatientEncounter('lab_request', payload, async () => {
+              await this.deps.repository.markOrderAsUploaded(labRequest.order_id);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateDiagEncounters(startDate: string): Promise<GeneratorResult> {
@@ -436,6 +530,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
     const currentTime = phpTimestamp(this.now());
 
     for (const group of grouped.values()) {
@@ -448,52 +543,80 @@ export class EncounterProcessor {
 
       const date = first.source_date;
 
-      const exists = await this.deps.repository.mainEncounterExists(
-        upid,
-        first.client_id,
-        date,
-        'consultation',
+      const mainOutcome = await this.runRecordSafe(
+        'diagnostic',
+        { clientId: first.client_id, date, phase: 'main' },
+        async () => {
+          const exists = await this.deps.repository.mainEncounterExists(
+            upid,
+            first.client_id,
+            date,
+            'consultation',
+          );
+
+          if (exists) {
+            return 'skipped' as const;
+          }
+
+          const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
+            encountId: this.uuidFactory(),
+            type: 'consultation',
+            upid,
+            clientId: first.client_id,
+            date,
+            time: currentTime,
+            rhieUploadedAt: currentTime,
+          });
+
+          const mainResult = await this.persistMainEncounter('diagnostic', mainPayload);
+          return mainResult === 'processed' ? ('processed' as const) : ('skipped' as const);
+        },
       );
 
-      if (!exists) {
-        const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
-          encountId: this.uuidFactory(),
-          type: 'consultation',
-          upid,
-          clientId: first.client_id,
-          date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
-
-        const mainResult = await this.persistMainEncounter('diagnostic', mainPayload);
-        if (mainResult === 'processed') processed += 1;
-        else skipped += 1;
+      if (!mainOutcome.ok) {
+        failed += 1;
+      } else if (mainOutcome.value === 'processed') {
+        processed += 1;
+      } else if (mainOutcome.value === 'skipped') {
+        skipped += 1;
       }
 
       for (const diag of group) {
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'diagnostic',
-          upid,
-          clientId: diag.client_id,
-          sourceId: diag.source_id,
-          sourceTable: 'diag_client',
-          date: diag.source_date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
+        const outcome = await this.runRecordSafe(
+          'diagnostic',
+          { clientId: diag.client_id, sourceId: diag.source_id, date: diag.source_date },
+          async () => {
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'diagnostic',
+              upid,
+              clientId: diag.client_id,
+              sourceId: diag.source_id,
+              sourceTable: 'diag_client',
+              date: diag.source_date,
+              time: currentTime,
+              rhieUploadedAt: currentTime,
+            });
 
-        const result = await this.persistPatientEncounter('diagnostic', payload, async () => {
-          await this.deps.repository.markDiagAsUploaded(diag.client_id, date);
-        });
+            const result = await this.persistPatientEncounter('diagnostic', payload, async () => {
+              await this.deps.repository.markDiagAsUploaded(diag.client_id, date);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateComplaintEncounters(startDate: string): Promise<GeneratorResult> {
@@ -502,6 +625,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
     const currentTime = phpTimestamp(this.now());
 
     for (const group of grouped.values()) {
@@ -513,28 +637,44 @@ export class EncounterProcessor {
       }
 
       for (const plainte of group) {
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'complaint',
-          upid,
-          clientId: plainte.patient_id,
-          sourceId: plainte.source_id,
-          sourceTable: 'vital_sign',
-          date: plainte.source_date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
+        const outcome = await this.runRecordSafe(
+          'complaint',
+          { clientId: plainte.patient_id, sourceId: plainte.source_id, date: plainte.source_date },
+          async () => {
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'complaint',
+              upid,
+              clientId: plainte.patient_id,
+              sourceId: plainte.source_id,
+              sourceTable: 'vital_sign',
+              date: plainte.source_date,
+              time: currentTime,
+              rhieUploadedAt: currentTime,
+            });
 
-        const result = await this.persistPatientEncounter('complaint', payload, async () => {
-          await this.deps.repository.markComplaintAsUploaded(plainte.patient_id, plainte.source_date);
-        });
+            const result = await this.persistPatientEncounter('complaint', payload, async () => {
+              await this.deps.repository.markComplaintAsUploaded(
+                plainte.patient_id,
+                plainte.source_date,
+              );
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateVitalSignEncounters(startDate: string): Promise<GeneratorResult> {
@@ -543,6 +683,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
     const currentTime = phpTimestamp(this.now());
 
     for (const group of grouped.values()) {
@@ -555,52 +696,84 @@ export class EncounterProcessor {
 
       const date = first.source_date;
 
-      const exists = await this.deps.repository.mainEncounterExists(
-        upid,
-        first.patient_id,
-        date,
-        'encountervital',
+      const mainOutcome = await this.runRecordSafe(
+        'vital_sign',
+        { clientId: first.patient_id, date, phase: 'main' },
+        async () => {
+          const exists = await this.deps.repository.mainEncounterExists(
+            upid,
+            first.patient_id,
+            date,
+            'encountervital',
+          );
+
+          if (exists) {
+            return 'skipped' as const;
+          }
+
+          const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
+            encountId: this.uuidFactory(),
+            type: 'encounter_vital',
+            upid,
+            clientId: first.patient_id,
+            date,
+            time: currentTime,
+            rhieUploadedAt: currentTime,
+          });
+
+          const mainResult = await this.persistMainEncounter('vital_sign', mainPayload);
+          return mainResult === 'processed' ? ('processed' as const) : ('skipped' as const);
+        },
       );
 
-      if (!exists) {
-        const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
-          encountId: this.uuidFactory(),
-          type: 'encounter_vital',
-          upid,
-          clientId: first.patient_id,
-          date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
-
-        const mainResult = await this.persistMainEncounter('vital_sign', mainPayload);
-        if (mainResult === 'processed') processed += 1;
-        else skipped += 1;
+      if (!mainOutcome.ok) {
+        failed += 1;
+      } else if (mainOutcome.value === 'processed') {
+        processed += 1;
+      } else if (mainOutcome.value === 'skipped') {
+        skipped += 1;
       }
 
       for (const vitalSign of group) {
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'vital_sign',
-          upid,
-          clientId: vitalSign.patient_id,
-          sourceId: vitalSign.source_id,
-          sourceTable: 'vital_sign',
-          date: vitalSign.source_date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
+        const outcome = await this.runRecordSafe(
+          'vital_sign',
+          {
+            clientId: vitalSign.patient_id,
+            sourceId: vitalSign.source_id,
+            date: vitalSign.source_date,
+          },
+          async () => {
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'vital_sign',
+              upid,
+              clientId: vitalSign.patient_id,
+              sourceId: vitalSign.source_id,
+              sourceTable: 'vital_sign',
+              date: vitalSign.source_date,
+              time: currentTime,
+              rhieUploadedAt: currentTime,
+            });
 
-        const result = await this.persistPatientEncounter('vital_sign', payload, async () => {
-          await this.deps.repository.markVitalSignAsUploaded(vitalSign.patient_id, date);
-        });
+            const result = await this.persistPatientEncounter('vital_sign', payload, async () => {
+              await this.deps.repository.markVitalSignAsUploaded(vitalSign.patient_id, date);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   private async generateNcdEncounters(
@@ -616,6 +789,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
     const currentTime = phpTimestamp(this.now());
 
     for (const group of grouped.values()) {
@@ -628,52 +802,80 @@ export class EncounterProcessor {
 
       const date = first.source_date;
 
-      const exists = await this.deps.repository.mainEncounterExists(
-        upid,
-        first.client_id,
-        date,
-        mainCheckType,
+      const mainOutcome = await this.runRecordSafe(
+        generator,
+        { clientId: first.client_id, date, phase: 'main' },
+        async () => {
+          const exists = await this.deps.repository.mainEncounterExists(
+            upid,
+            first.client_id,
+            date,
+            mainCheckType,
+          );
+
+          if (exists) {
+            return 'skipped' as const;
+          }
+
+          const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
+            encountId: this.uuidFactory(),
+            type: mainInsertType,
+            upid,
+            clientId: first.client_id,
+            date,
+            time: currentTime,
+            rhieUploadedAt: currentTime,
+          });
+
+          const mainResult = await this.persistMainEncounter(generator, mainPayload);
+          return mainResult === 'processed' ? ('processed' as const) : ('skipped' as const);
+        },
       );
 
-      if (!exists) {
-        const mainPayload = this.deps.payloadBuilder.buildMainEncounter({
-          encountId: this.uuidFactory(),
-          type: mainInsertType,
-          upid,
-          clientId: first.client_id,
-          date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
-
-        const mainResult = await this.persistMainEncounter(generator, mainPayload);
-        if (mainResult === 'processed') processed += 1;
-        else skipped += 1;
+      if (!mainOutcome.ok) {
+        failed += 1;
+      } else if (mainOutcome.value === 'processed') {
+        processed += 1;
+      } else if (mainOutcome.value === 'skipped') {
+        skipped += 1;
       }
 
       for (const row of group) {
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: patientType,
-          upid,
-          clientId: row.client_id,
-          sourceId: row.source_id,
-          sourceTable: 'ncds',
-          date: row.source_date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
+        const outcome = await this.runRecordSafe(
+          generator,
+          { clientId: row.client_id, sourceId: row.source_id, date: row.source_date },
+          async () => {
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: patientType,
+              upid,
+              clientId: row.client_id,
+              sourceId: row.source_id,
+              sourceTable: 'ncds',
+              date: row.source_date,
+              time: currentTime,
+              rhieUploadedAt: currentTime,
+            });
 
-        const result = await this.persistPatientEncounter(generator, payload, async () => {
-          await this.deps.repository.markNcdAsUploaded(row.client_id, date);
-        });
+            const result = await this.persistPatientEncounter(generator, payload, async () => {
+              await this.deps.repository.markNcdAsUploaded(row.client_id, date);
+            });
 
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 
   async generateVitalNCDsEncounters(startDate: string): Promise<GeneratorResult> {
@@ -715,6 +917,7 @@ export class EncounterProcessor {
 
     let processed = 0;
     let skipped = 0;
+    let failed = 0;
     const currentTime = phpTimestamp(this.now());
 
     for (const group of grouped.values()) {
@@ -726,24 +929,37 @@ export class EncounterProcessor {
       }
 
       for (const referral of group) {
-        const payload = this.deps.payloadBuilder.buildPatientEncounter({
-          encountId: this.uuidFactory(),
-          type: 'referral',
-          upid,
-          clientId: referral.client_id,
-          sourceId: referral.source_id,
-          sourceTable: 'diag_client',
-          date: referral.source_date,
-          time: currentTime,
-          rhieUploadedAt: currentTime,
-        });
+        const outcome = await this.runRecordSafe(
+          'referral',
+          { clientId: referral.client_id, sourceId: referral.source_id, date: referral.source_date },
+          async () => {
+            const payload = this.deps.payloadBuilder.buildPatientEncounter({
+              encountId: this.uuidFactory(),
+              type: 'referral',
+              upid,
+              clientId: referral.client_id,
+              sourceId: referral.source_id,
+              sourceTable: 'diag_client',
+              date: referral.source_date,
+              time: currentTime,
+              rhieUploadedAt: currentTime,
+            });
 
-        const result = await this.persistPatientEncounter('referral', payload);
-        if (result === 'processed') processed += 1;
-        else skipped += 1;
+            const result = await this.persistPatientEncounter('referral', payload);
+            return result === 'processed' ? ('processed' as const) : ('skipped' as const);
+          },
+        );
+
+        if (!outcome.ok) {
+          failed += 1;
+        } else if (outcome.value === 'processed') {
+          processed += 1;
+        } else {
+          skipped += 1;
+        }
       }
     }
 
-    return { processed, failed: 0, skipped };
+    return { processed, failed, skipped };
   }
 }

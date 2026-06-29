@@ -31,6 +31,8 @@ export class EncounterIdWorker extends ModeAwareWorker {
         payloadBuilder,
         logger: ctx.logger,
         config,
+        facilityId: ctx.facilityId,
+        facilityCode: ctx.facilityCode,
       });
     }
 
