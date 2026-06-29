@@ -10,9 +10,10 @@
   ],
   "scripts": {
     "postinstall": "node scripts/ensure-yaml-dist.mjs && node scripts/verify-runtime-deps.mjs",
-    "build": "tsc -b && node scripts/verify-workspace-dist.mjs",
+    "build": "node scripts/stale-build-guard.mjs && tsc -b && node scripts/verify-workspace-dist.mjs",
     "clean": "find packages apps services -name tsconfig.tsbuildinfo -delete && rm -rf packages/*/dist apps/*/dist services/*/dist",
     "verify:build": "npm run clean && npm run build",
+    "verify:fresh-clone": "node scripts/stale-build-guard.mjs && tsc -b && node scripts/verify-workspace-dist.mjs",
     "test": "npm run test -w @rhie/service-client-registry && npm run test -w @rhie/service-encounter-id && npm run test -w @rhie/config && npm run test -w @rhie/environment-discovery",
     "test:config": "npm run test -w @rhie/config",
     "test:client-registry": "npm run test -w @rhie/service-client-registry",

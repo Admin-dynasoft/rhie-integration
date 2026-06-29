@@ -41,6 +41,8 @@ Do not edit `.env.development` or `.env.production` on the server in place; upda
 
 Always use **`npm ci`** in deployment and CI — not `npm install`. `npm ci` installs exactly what is recorded in `package-lock.json` and removes extraneous packages.
 
+**Important:** Do not run `npm install --omit=dev` or set `NODE_ENV=production` before install. TypeScript and other build tools are devDependencies and must be present for `npm run build`.
+
 ```bash
 cp .env.production .env
 # Edit .env — set LOCAL_DB_PASSWORD, RHIE_PASSWORD, and configs/platform.yaml
@@ -48,6 +50,10 @@ cp .env.production .env
 npm ci
 npm run build
 ```
+
+`npm run build` runs a stale-build guard, then `tsc -b` (TypeScript project references for all workspaces), then verifies every package emitted `dist/index.js` and `dist/index.d.ts`. No manual per-package builds are required.
+
+Build artifacts (`dist/`) and incremental caches (`tsconfig.tsbuildinfo`) are **not** committed. A fresh clone must always run `npm run build` once before starting services.
 
 `npm ci` runs the root **postinstall** hook, which verifies runtime dependencies (`yaml`, `axios`, and axios HTTP adapter dependencies). If any package is missing or incomplete, install fails before you start services.
 

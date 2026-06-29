@@ -25,6 +25,7 @@ npm run build
 npm run dev:coordinator          # Orchestrator (port 9090)
 npm run dev:client-host          # Client Registry workers (port 9091)
 npm run dev:encounter-host       # Encounter ID workers (port 9092)
+npm run dev:visit-host           # Visit Encounter workers (port 9093)
 ```
 
 Or via PM2: `./scripts/start-all.sh`

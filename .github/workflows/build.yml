@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  fresh-clone-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies (lockfile)
+        run: npm ci
+
+      - name: Build all workspaces
+        run: npm run build
+
+      - name: Verify no stale tsbuildinfo is tracked
+        run: |
+          if git ls-files '*tsconfig.tsbuildinfo' | grep -q .; then
+            echo 'ERROR: tsconfig.tsbuildinfo must not be committed'
+            git ls-files '*tsconfig.tsbuildinfo'
+            exit 1
+          fi
