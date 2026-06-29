@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc -b",
-    "prestart": "node ../../scripts/verify-workspace-dist.mjs",
+    "prestart": "node ../../scripts/verify-workspace-dist.mjs && node ../../scripts/verify-runtime-deps.mjs",
     "start": "node dist/index.js",
     "dev": "tsc -b && node dist/index.js",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"

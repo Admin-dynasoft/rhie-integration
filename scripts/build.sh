@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-echo "Installing dependencies..."
-npm install
+echo "Installing dependencies from package-lock.json..."
+npm ci
 
 echo "Building all packages and services..."
 npm run build

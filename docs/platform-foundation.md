@@ -42,6 +42,9 @@ Phase 2.5 builds the reusable infrastructure that all RHIE services share.
 ## Running the Platform
 
 ```bash
+# Install from lockfile (deployment / first setup)
+npm ci
+
 # Build
 npm run build
 
@@ -69,6 +72,7 @@ No changes to worker-framework, worker-host, or coordinator required.
 
 ## Documentation Index
 
+- [Deployment](./deployment.md)
 - [Worker Framework](./worker-framework.md)
 - [Coordinator](./coordinator.md)
 - [Architecture](./architecture.md)

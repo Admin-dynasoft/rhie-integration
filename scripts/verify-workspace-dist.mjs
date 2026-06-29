@@ -61,7 +61,7 @@ try {
   console.error(
     'Dependency check failed: the yaml package is not usable from @rhie/config.\n' +
       `${error instanceof Error ? error.message : error}\n` +
-      'Run "npm install" from the repository root (postinstall restores yaml if dist/ was deleted).',
+      'Run "npm ci" from the repository root (postinstall restores yaml if dist/ was deleted).',
   );
   process.exit(1);
 }

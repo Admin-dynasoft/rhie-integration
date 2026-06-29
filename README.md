@@ -18,7 +18,7 @@ Autonomous background services that synchronize data between Medisoft MySQL data
 cp .env.example .env
 # Edit configs/platform.yaml
 
-npm install
+npm ci
 npm run build
 
 # Start platform
@@ -75,6 +75,7 @@ rhie-integration/
 
 ## Documentation
 
+- [Deployment](./docs/deployment.md)
 - [Platform Foundation](./docs/platform-foundation.md)
 - [Worker Framework](./docs/worker-framework.md)
 - [Coordinator](./docs/coordinator.md)

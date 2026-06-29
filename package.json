@@ -9,7 +9,7 @@
     "services/*"
   ],
   "scripts": {
-    "postinstall": "node scripts/ensure-yaml-dist.mjs",
+    "postinstall": "node scripts/ensure-yaml-dist.mjs && node scripts/verify-runtime-deps.mjs",
     "build": "tsc -b && node scripts/verify-workspace-dist.mjs",
     "clean": "find packages apps services -name tsconfig.tsbuildinfo -delete && rm -rf packages/*/dist apps/*/dist services/*/dist",
     "verify:build": "npm run clean && npm run build",
