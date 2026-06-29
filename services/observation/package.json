@@ -1,15 +1,24 @@
 {
   "name": "@rhie/service-observation",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@rhie/config": "*",
+    "@rhie/database": "*",
+    "@rhie/logger": "*",
+    "@rhie/rhie-client": "*",
+    "@rhie/shared": "*",
     "@rhie/worker-framework": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   },
   "exports": {
     ".": {

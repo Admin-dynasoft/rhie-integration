@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ClientRegistryConfigSchema } from './client-registry.js';
 import { EncounterIdConfigSchema } from './encounter-id.js';
 import { VisitEncounterConfigSchema } from './visit-encounter.js';
+import { ObservationConfigSchema } from './observation.js';
 import { IntegrationStateConfigSchema } from './integration-state.js';
 import { ReplicationMonitorConfigSchema } from './replication-monitor.js';
 import { EnvironmentDiscoveryConfigSchema } from './environment-discovery-config.js';
@@ -41,7 +42,7 @@ export const RhieConfigSchema = z.object({
   encounterIdPath: z.string().default('/encounters/id'),
   visitEncounterPath: z.string().default('/shr/Encounter'),
   transferEncounterPath: z.string().default('/encounters/transfer'),
-  observationPath: z.string().default('/observations'),
+  observationPath: z.string().default('/shr/Observation'),
 });
 
 export type RhieConfig = z.infer<typeof RhieConfigSchema>;
@@ -141,6 +142,7 @@ export const PlatformConfigSchema = z.object({
   clientRegistry: ClientRegistryConfigSchema.default({}),
   encounterId: EncounterIdConfigSchema.default({}),
   visitEncounter: VisitEncounterConfigSchema.default({}),
+  observation: ObservationConfigSchema.default({}),
   integrationState: IntegrationStateConfigSchema.default({}),
   replicationMonitor: ReplicationMonitorConfigSchema.default({}),
   environmentDiscovery: EnvironmentDiscoveryConfigSchema.default({}),
@@ -158,6 +160,8 @@ export type { EncounterIdConfig, EncounterIdExecutionMode } from './encounter-id
 export { EncounterIdConfigSchema } from './encounter-id.js';
 export type { VisitEncounterConfig, VisitEncounterExecutionMode } from './visit-encounter.js';
 export { VisitEncounterConfigSchema } from './visit-encounter.js';
+export type { ObservationConfig, ObservationExecutionMode } from './observation.js';
+export { ObservationConfigSchema } from './observation.js';
 export type { IntegrationStateConfig } from './integration-state.js';
 export { IntegrationStateConfigSchema } from './integration-state.js';
 export type { EnvironmentDiscoveryConfig } from './environment-discovery-config.js';

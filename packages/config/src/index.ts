@@ -43,6 +43,8 @@ export type {
   EncounterIdExecutionMode,
   VisitEncounterConfig,
   VisitEncounterExecutionMode,
+  ObservationConfig,
+  ObservationExecutionMode,
   IntegrationStateConfig,
   ReplicationMonitorConfig,
   ReplicationHealthStatus,

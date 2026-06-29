@@ -61,7 +61,7 @@ rhie:
   encounterIdPath: /encounters/id
   visitEncounterPath: /shr/Encounter
   transferEncounterPath: /encounters/transfer
-  observationPath: /observations
+  observationPath: /shr/Observation
 
 clientRegistry:
   executionMode: shadow
@@ -75,6 +75,9 @@ encounterId:
   transferGenerateFromDate: "2026-06-20"
 
 visitEncounter:
+  executionMode: shadow
+
+observation:
   executionMode: shadow
 
 integrationState:
