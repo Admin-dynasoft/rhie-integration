@@ -6,6 +6,17 @@ export interface PendingVisitEncounterRow {
   resource_encount_id: string;
 }
 
+/** Read-only batch selection breakdown for DEBUG logging (does not affect processing). */
+export interface BatchSelectionDiagnostics {
+  encounterType: 'VISIT_ENCOUNTER' | 'E_TRANSFER';
+  rhieStatus2Count: number;
+  batchEligibleCount: number;
+  blockedByUpidStatus: number;
+  blockedByUpidPrefix: number;
+  blockedByAge: number;
+  blockedByDocumentNumber: number;
+}
+
 export interface VisitEncounterDataRow {
   resource_encount_id: string;
   upid: string;

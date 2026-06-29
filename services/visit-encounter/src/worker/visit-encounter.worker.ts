@@ -21,6 +21,17 @@ export class VisitEncounterWorker extends ModeAwareWorker {
   protected async processBatch(ctx: WorkerExecutionContext): Promise<BatchResult> {
     ctx.setCurrentTask('visit-encounter batch');
 
+    ctx.logger.debug(
+      {
+        event: 'visit_encounter_worker_process_batch',
+        workerType: this.workerType,
+        facilityId: ctx.facilityId,
+        batchSize: ctx.batchSize,
+        mode: ctx.mode,
+      },
+      'VisitEncounterWorker.processBatch() — Worker Host → VisitEncounterWorker → processAllPendingEncounters',
+    );
+
     if (!this.processor) {
       const config = getConfig().visitEncounter;
       const repository = new VisitEncounterRepository(ctx.database);

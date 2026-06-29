@@ -50,7 +50,27 @@ function createProcessor(
   ),
 ): VisitEncounterProcessor {
   return new VisitEncounterProcessor({
-    repository: repository as VisitEncounterRepository,
+    repository: {
+      getVisitBatchSelectionDiagnostics: mock.fn(async () => ({
+        encounterType: 'VISIT_ENCOUNTER' as const,
+        rhieStatus2Count: 0,
+        batchEligibleCount: 0,
+        blockedByUpidStatus: 0,
+        blockedByUpidPrefix: 0,
+        blockedByAge: 0,
+        blockedByDocumentNumber: 0,
+      })),
+      getETransferBatchSelectionDiagnostics: mock.fn(async () => ({
+        encounterType: 'E_TRANSFER' as const,
+        rhieStatus2Count: 0,
+        batchEligibleCount: 0,
+        blockedByUpidStatus: 0,
+        blockedByUpidPrefix: 0,
+        blockedByAge: 0,
+        blockedByDocumentNumber: 0,
+      })),
+      ...repository,
+    } as VisitEncounterRepository,
     payloadBuilder: new VisitPayloadBuilder(),
     logger: silentLogger,
     config,
