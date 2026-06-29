@@ -32,7 +32,15 @@ Only these values need to be configured manually:
 
 Database names, facility codes, and online facility connections are **discovered automatically** at startup.
 
-Copy `.env.example` to `.env` at the repository root and set at least `LOCAL_DB_PASSWORD` and `RHIE_PASSWORD`.
+Copy an environment file to `.env` at the repository root:
+
+```bash
+cp .env.development .env   # local development
+cp .env.production .env    # production deployment
+cp .env.example .env       # generic template (placeholders only)
+```
+
+Set at least `LOCAL_DB_PASSWORD` and `RHIE_PASSWORD` in `.env`. See [Deployment](./deployment.md#environment-files) for the full workflow.
 
 ## Environment Variables
 

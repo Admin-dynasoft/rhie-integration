@@ -15,8 +15,8 @@ Autonomous background services that synchronize data between Medisoft MySQL data
 ## Quick Start
 
 ```bash
-cp .env.example .env
-# Edit configs/platform.yaml
+cp .env.development .env
+# Edit configs/platform.yaml and set RHIE_PASSWORD in .env if needed
 
 npm ci
 npm run build

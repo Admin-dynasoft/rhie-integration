@@ -8,13 +8,42 @@ This monorepo uses **npm workspaces** with a committed **`package-lock.json`**. 
 - `package-lock.json` present in the repository (committed to Git — do not delete or gitignore it)
 - MySQL and RHIE credentials configured (see [Configuration](./configuration.md))
 
+## Environment files
+
+The application **always reads `.env` at runtime** (`packages/config/src/loader.ts` loads the repo-root `.env` file). That file is gitignored and must not be committed.
+
+Maintained source templates:
+
+| File | Purpose | Git |
+|------|---------|-----|
+| `.env.example` | Generic template with placeholders only | Committed |
+| `.env.development` | Local development defaults | Committed |
+| `.env.production` | Production bootstrap (set `LOCAL_DB_PASSWORD` on the host) | Committed |
+| `.env` | Active runtime config | **Gitignored** |
+
+### Development
+
+```bash
+cp .env.development .env
+# Set RHIE_PASSWORD in .env if required by your services
+```
+
+### Production
+
+```bash
+cp .env.production .env
+# Edit .env — set LOCAL_DB_PASSWORD and RHIE_PASSWORD before starting services
+```
+
+Do not edit `.env.development` or `.env.production` on the server in place; update the committed template in Git, then re-copy to `.env` on each host.
+
 ## Install (reproducible)
 
 Always use **`npm ci`** in deployment and CI — not `npm install`. `npm ci` installs exactly what is recorded in `package-lock.json` and removes extraneous packages.
 
 ```bash
-cp .env.example .env
-# Edit .env and configs/platform.yaml
+cp .env.production .env
+# Edit .env — set LOCAL_DB_PASSWORD, RHIE_PASSWORD, and configs/platform.yaml
 
 npm ci
 npm run build
@@ -55,8 +84,8 @@ On a fresh host or after `git clone`:
 ```bash
 git clone <repo-url> rhie-integration
 cd rhie-integration
-cp .env.example .env
-# configure .env and configs/platform.yaml
+cp .env.production .env
+# Set LOCAL_DB_PASSWORD, RHIE_PASSWORD, and configs/platform.yaml
 npm ci
 npm run build
 ./scripts/start-all.sh
