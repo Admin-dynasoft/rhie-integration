@@ -1,8 +1,6 @@
 node_modules/
 dist/
 *.js.map
-.env
-.env.local
 .env.*.local
 **/tsconfig.tsbuildinfo
 data/discovered-environment.json
@@ -10,3 +8,4 @@ data/discovered-environment.json
 .DS_Store
 coverage/
 .turbo/
+config.bat
