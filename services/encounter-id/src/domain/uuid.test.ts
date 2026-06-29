@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateEncounterUuid } from './uuid.js';
+import { generateEncounterUuid, phpTimestamp } from './uuid.js';
 
 describe('generateEncounterUuid', () => {
   it('produces RFC-4122-like format with 8-4-4-4-12 hex segments', () => {
@@ -18,5 +18,14 @@ describe('generateEncounterUuid', () => {
       assert.equal(parts[2].charAt(0), '4');
       assert.match(parts[3].charAt(0), /[89ab]/);
     }
+  });
+});
+
+describe('phpTimestamp', () => {
+  it('formats like PHP date(Y-m-d H:i:s)', () => {
+    assert.equal(
+      phpTimestamp(new Date('2026-06-28T14:05:09')),
+      '2026-06-28 14:05:09',
+    );
   });
 });

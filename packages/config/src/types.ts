@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ClientRegistryConfigSchema } from './client-registry.js';
 import { EncounterIdConfigSchema } from './encounter-id.js';
+import { VisitEncounterConfigSchema } from './visit-encounter.js';
 import { IntegrationStateConfigSchema } from './integration-state.js';
 import { ReplicationMonitorConfigSchema } from './replication-monitor.js';
 import { EnvironmentDiscoveryConfigSchema } from './environment-discovery-config.js';
@@ -38,7 +39,7 @@ export const RhieConfigSchema = z.object({
   timeoutMs: z.number().int().positive().default(30000),
   clientRegistryPath: z.string().default('/client-registry'),
   encounterIdPath: z.string().default('/encounters/id'),
-  visitEncounterPath: z.string().default('/encounters/visit'),
+  visitEncounterPath: z.string().default('/shr/Encounter'),
   transferEncounterPath: z.string().default('/encounters/transfer'),
   observationPath: z.string().default('/observations'),
 });
@@ -139,6 +140,7 @@ export const PlatformConfigSchema = z.object({
   rhie: RhieConfigSchema,
   clientRegistry: ClientRegistryConfigSchema.default({}),
   encounterId: EncounterIdConfigSchema.default({}),
+  visitEncounter: VisitEncounterConfigSchema.default({}),
   integrationState: IntegrationStateConfigSchema.default({}),
   replicationMonitor: ReplicationMonitorConfigSchema.default({}),
   environmentDiscovery: EnvironmentDiscoveryConfigSchema.default({}),
@@ -154,6 +156,8 @@ export type { ClientRegistryConfig, ClientRegistryExecutionMode } from './client
 export { ClientRegistryConfigSchema } from './client-registry.js';
 export type { EncounterIdConfig, EncounterIdExecutionMode } from './encounter-id.js';
 export { EncounterIdConfigSchema } from './encounter-id.js';
+export type { VisitEncounterConfig, VisitEncounterExecutionMode } from './visit-encounter.js';
+export { VisitEncounterConfigSchema } from './visit-encounter.js';
 export type { IntegrationStateConfig } from './integration-state.js';
 export { IntegrationStateConfigSchema } from './integration-state.js';
 export type { EnvironmentDiscoveryConfig } from './environment-discovery-config.js';

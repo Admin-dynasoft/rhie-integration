@@ -59,7 +59,7 @@ rhie:
     password: ${RHIE_PASSWORD}
   clientRegistryPath: /clientregistry/Patient
   encounterIdPath: /encounters/id
-  visitEncounterPath: /encounters/visit
+  visitEncounterPath: /shr/Encounter
   transferEncounterPath: /encounters/transfer
   observationPath: /observations
 
@@ -73,6 +73,9 @@ encounterId:
   executionMode: shadow
   generateFromDate: "2026-06-24"
   transferGenerateFromDate: "2026-06-20"
+
+visitEncounter:
+  executionMode: shadow
 
 integrationState:
   autoMigrate: true

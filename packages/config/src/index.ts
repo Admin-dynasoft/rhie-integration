@@ -41,6 +41,8 @@ export type {
   ClientRegistryExecutionMode,
   EncounterIdConfig,
   EncounterIdExecutionMode,
+  VisitEncounterConfig,
+  VisitEncounterExecutionMode,
   IntegrationStateConfig,
   ReplicationMonitorConfig,
   ReplicationHealthStatus,

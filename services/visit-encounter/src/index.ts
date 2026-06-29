@@ -1,16 +1,8 @@
-import { StubWorker, type WorkerDependencies, type WorkerFactory, type WorkerIdentity } from '@rhie/worker-framework';
-
-class VisitEncounterWorker extends StubWorker {
-  get workerType(): string {
-    return 'visit-encounter';
-  }
-}
-
-export const visitEncounterWorkerFactory: WorkerFactory = {
-  workerType: 'visit-encounter',
-  create(deps: WorkerDependencies, identity: WorkerIdentity) {
-    return new VisitEncounterWorker(deps, identity);
-  },
-};
-
-export { VisitEncounterWorker };
+export { VisitEncounterWorker, visitEncounterWorkerFactory } from './worker/visit-encounter.worker.js';
+export {
+  VisitEncounterProcessor,
+  type VisitEncounterService,
+  type VisitEncounterServiceDeps,
+} from './domain/visit-encounter.processor.js';
+export { VisitPayloadBuilder, phpDateC } from './domain/visit-payload.builder.js';
+export { VisitEncounterRepository } from './repository/visit-encounter.repository.js';

@@ -203,3 +203,141 @@ describe('EncounterProcessor phpTimestamp', () => {
     );
   });
 });
+
+describe('EncounterProcessor production mode', () => {
+  it('inserts visit encounter and marks clientts in production mode', async () => {
+    const insertMain = mock.fn(async () => undefined);
+    const markVisit = mock.fn(async () => undefined);
+
+    const repository = {
+      fetchVisitEncounters: mock.fn(async () => [
+        {
+          date: '2026-06-25',
+          time: '09:30:00',
+          client_id: 12345,
+          upid: '602645-3179-7909',
+          referral: false,
+        },
+      ]),
+      mainEncounterExists: mock.fn(async () => false),
+      insertMainEncounter: insertMain,
+      markVisitAsUploaded: markVisit,
+    } as unknown as EncounterRepository;
+
+    const processor = new EncounterProcessor({
+      repository,
+      payloadBuilder: new EncounterPayloadBuilder(),
+      logger: createMockLogger(),
+      config: { ...createShadowConfig(), executionMode: 'production' },
+      uuidFactory: () => FIXED_UUID,
+      now: () => new Date('2026-06-28T14:00:00Z'),
+    });
+
+    const result = await processor.generateVisitEncounters('2026-06-24');
+
+    assert.equal(result.processed, 1);
+    assert.equal(insertMain.mock.callCount(), 1);
+    assert.equal(markVisit.mock.callCount(), 1);
+
+    const payload = insertMain.mock.calls[0].arguments[0] as { rhieStatus: number; type: string };
+    assert.equal(payload.rhieStatus, 2);
+    assert.equal(payload.type, 'VISIT_ENCOUNTER');
+  });
+
+  it('skips visit when main encounter already exists like PHP duplicate check', async () => {
+    const insertMain = mock.fn(async () => undefined);
+    const markVisit = mock.fn(async () => undefined);
+
+    const repository = {
+      fetchVisitEncounters: mock.fn(async () => [
+        {
+          date: '2026-06-25',
+          time: '09:30:00',
+          client_id: 12345,
+          upid: '602645-3179-7909',
+          referral: false,
+        },
+      ]),
+      mainEncounterExists: mock.fn(async () => true),
+      insertMainEncounter: insertMain,
+      markVisitAsUploaded: markVisit,
+    } as unknown as EncounterRepository;
+
+    const processor = new EncounterProcessor({
+      repository,
+      payloadBuilder: new EncounterPayloadBuilder(),
+      logger: createMockLogger(),
+      config: { ...createShadowConfig(), executionMode: 'production' },
+      uuidFactory: () => FIXED_UUID,
+      now: () => new Date('2026-06-28T14:00:00Z'),
+    });
+
+    const result = await processor.generateVisitEncounters('2026-06-24');
+
+    assert.equal(result.skipped, 1);
+    assert.equal(insertMain.mock.callCount(), 0);
+    assert.equal(markVisit.mock.callCount(), 0);
+  });
+});
+
+describe('EncounterProcessor error handling', () => {
+  it('continues processing remaining visit groups when one record fails', async () => {
+    const insertMain = mock.fn(async (payload: { clientId: number }) => {
+      if (payload.clientId === 111) {
+        throw new Error('insert failed');
+      }
+    });
+
+    const repository = {
+      fetchVisitEncounters: mock.fn(async () => [
+        {
+          date: '2026-06-25',
+          time: '09:00:00',
+          client_id: 111,
+          upid: '602645-3179-7909',
+          referral: false,
+        },
+        {
+          date: '2026-06-25',
+          time: '10:00:00',
+          client_id: 222,
+          upid: '602645-3179-7908',
+          referral: false,
+        },
+      ]),
+      mainEncounterExists: mock.fn(async () => false),
+      insertMainEncounter: insertMain,
+      markVisitAsUploaded: mock.fn(async () => undefined),
+    } as unknown as EncounterRepository;
+
+    const logger = createMockLogger();
+    const processor = new EncounterProcessor({
+      repository,
+      payloadBuilder: new EncounterPayloadBuilder(),
+      logger,
+      config: { ...createShadowConfig(), executionMode: 'production' },
+      facilityId: 'HC-A',
+      facilityCode: 'facility_a',
+      uuidFactory: () => FIXED_UUID,
+      now: () => new Date('2026-06-28T14:00:00Z'),
+    });
+
+    const result = await processor.generateVisitEncounters('2026-06-24');
+
+    assert.equal(result.failed, 1);
+    assert.equal(result.processed, 1);
+    assert.equal(insertMain.mock.callCount(), 2);
+
+    const errorLog = (logger.error as unknown as ReturnType<typeof mock.fn>).mock.calls[0]
+      .arguments[0] as {
+      facilityId: string;
+      facilityCode: string;
+      stack: string;
+      event: string;
+    };
+    assert.equal(errorLog.event, 'record_error');
+    assert.equal(errorLog.facilityId, 'HC-A');
+    assert.equal(errorLog.facilityCode, 'facility_a');
+    assert.match(errorLog.stack, /insert failed/);
+  });
+});
