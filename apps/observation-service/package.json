@@ -4,9 +4,9 @@
   "private": true,
   "main": "./dist/index.js",
   "scripts": {
-    "build": "tsc -b",
-    "start": "node dist/index.js",
-    "dev": "tsc -b && node dist/index.js",
+    "build": "node init && tsc -b",
+    "start": "node init && node dist/index.js",
+    "dev": "node init && tsc -b && node dist/index.js",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
