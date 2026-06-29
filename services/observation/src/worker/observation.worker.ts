@@ -9,14 +9,33 @@ import {
 } from '@rhie/worker-framework';
 import { ComplaintEncounterRepository } from '../repository/complaint-encounter.repository.js';
 import { DiagnosisEncounterRepository } from '../repository/diagnosis-encounter.repository.js';
+import { MedicationEncounterRepository } from '../repository/medication-encounter.repository.js';
+import { LaboratoryEncounterRepository } from '../repository/laboratory-encounter.repository.js';
 import { ComplaintPayloadBuilder } from '../domain/complaint-payload.builder.js';
 import { ComplaintEncounterProcessor } from '../domain/complaint-encounter.processor.js';
 import { DiagnosisPayloadBuilder } from '../domain/diagnosis-payload.builder.js';
 import { DiagnosisEncounterProcessor } from '../domain/diagnosis-encounter.processor.js';
+import { MedicationPayloadBuilder } from '../domain/medication-payload.builder.js';
+import { MedicationEncounterProcessor } from '../domain/medication-encounter.processor.js';
+import { LaboratoryPayloadBuilder } from '../domain/laboratory-payload.builder.js';
+import { LaboratoryEncounterProcessor } from '../domain/laboratory-encounter.processor.js';
+
+function sumBatchResults(...results: BatchResult[]): BatchResult {
+  return results.reduce(
+    (acc, r) => ({
+      processed: acc.processed + r.processed,
+      failed: acc.failed + r.failed,
+      skipped: acc.skipped + r.skipped,
+    }),
+    { processed: 0, failed: 0, skipped: 0 },
+  );
+}
 
 export class ObservationWorker extends ModeAwareWorker {
   private complaintProcessor: ComplaintEncounterProcessor | null = null;
   private diagnosisProcessor: DiagnosisEncounterProcessor | null = null;
+  private medicationProcessor: MedicationEncounterProcessor | null = null;
+  private laboratoryProcessor: LaboratoryEncounterProcessor | null = null;
 
   get workerType(): string {
     return 'observation';
@@ -40,10 +59,34 @@ export class ObservationWorker extends ModeAwareWorker {
       });
     }
 
+    if (!this.laboratoryProcessor) {
+      this.laboratoryProcessor = new LaboratoryEncounterProcessor({
+        repository: new LaboratoryEncounterRepository(ctx.database),
+        payloadBuilder: new LaboratoryPayloadBuilder(),
+        logger: ctx.logger,
+        config,
+        rhieConfig,
+        facilityId: ctx.facilityId,
+        facilityCode: ctx.facilityCode,
+      });
+    }
+
     if (!this.diagnosisProcessor) {
       this.diagnosisProcessor = new DiagnosisEncounterProcessor({
         repository: new DiagnosisEncounterRepository(ctx.database),
         payloadBuilder: new DiagnosisPayloadBuilder(),
+        logger: ctx.logger,
+        config,
+        rhieConfig,
+        facilityId: ctx.facilityId,
+        facilityCode: ctx.facilityCode,
+      });
+    }
+
+    if (!this.medicationProcessor) {
+      this.medicationProcessor = new MedicationEncounterProcessor({
+        repository: new MedicationEncounterRepository(ctx.database),
+        payloadBuilder: new MedicationPayloadBuilder(),
         logger: ctx.logger,
         config,
         rhieConfig,
@@ -60,30 +103,48 @@ export class ObservationWorker extends ModeAwareWorker {
         mode: ctx.mode,
         facilityId: ctx.facilityId,
       },
-      'Starting observation upload batch (complaint + diagnosis)',
+      'Starting observation upload batch (complaint → lab results → diagnosis → lab requests → medication)',
     );
 
     if (!ctx.shouldContinue()) {
       return { processed: 0, failed: 0, skipped: 0 };
     }
 
-    const complaintResult = await this.complaintProcessor.processPendingComplaintEncounters(
-      ctx.batchSize,
-    );
+    const results: BatchResult[] = [];
 
+    results.push(
+      await this.complaintProcessor.processPendingComplaintEncounters(ctx.batchSize),
+    );
     if (!ctx.shouldContinue()) {
-      return complaintResult;
+      return sumBatchResults(...results);
     }
 
-    const diagnosisResult = await this.diagnosisProcessor.processPendingDiagnosisEncounters(
-      ctx.batchSize,
+    results.push(
+      await this.laboratoryProcessor.processPendingLabResultEncounters(ctx.batchSize),
+    );
+    if (!ctx.shouldContinue()) {
+      return sumBatchResults(...results);
+    }
+
+    results.push(
+      await this.diagnosisProcessor.processPendingDiagnosisEncounters(ctx.batchSize),
+    );
+    if (!ctx.shouldContinue()) {
+      return sumBatchResults(...results);
+    }
+
+    results.push(
+      await this.laboratoryProcessor.processPendingLabRequestEncounters(ctx.batchSize),
+    );
+    if (!ctx.shouldContinue()) {
+      return sumBatchResults(...results);
+    }
+
+    results.push(
+      await this.medicationProcessor.processPendingMedicationEncounters(ctx.batchSize),
     );
 
-    return {
-      processed: complaintResult.processed + diagnosisResult.processed,
-      failed: complaintResult.failed + diagnosisResult.failed,
-      skipped: complaintResult.skipped + diagnosisResult.skipped,
-    };
+    return sumBatchResults(...results);
   }
 }
 
