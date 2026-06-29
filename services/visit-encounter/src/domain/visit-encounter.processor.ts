@@ -9,8 +9,12 @@ import axios, { type AxiosInstance } from 'axios';
 import { rhieSanitizeUpid, rhieUpidIsExcluded } from '@rhie/shared';
 import type { BatchResult } from '@rhie/worker-framework';
 import { VisitEncounterRepository } from '../repository/visit-encounter.repository.js';
-import { VisitPayloadBuilder, serializeVisitPayload } from './visit-payload.builder.js';
-import type { VisitUploadResult } from './types.js';
+import {
+  VisitPayloadBuilder,
+  serializeETransferPayload,
+  serializeVisitPayload,
+} from './visit-payload.builder.js';
+import type { ETransferEncounterDataRow, FhirETransferEncounterPayload, FhirVisitEncounterPayload, VisitEncounterDataRow, VisitUploadResult } from './types.js';
 
 export interface VisitEncounterProcessorDeps {
   repository: VisitEncounterRepository;
@@ -20,17 +24,18 @@ export interface VisitEncounterProcessorDeps {
   rhieConfig: RhieConfig;
   facilityId?: string;
   facilityCode?: string;
+  now?: () => Date;
 }
 
-/** Service-layer alias — business logic port of PHP UploadVisitEncounterController */
 export type VisitEncounterService = VisitEncounterProcessor;
-export type VisitEncounterServiceDeps = VisitEncounterProcessorDeps;
 
 export class VisitEncounterProcessor {
   private readonly http: AxiosInstance;
   private readonly authProvider: RhieAuthProvider;
+  private readonly now: () => Date;
 
   constructor(private readonly deps: VisitEncounterProcessorDeps) {
+    this.now = deps.now ?? (() => new Date());
     this.http = axios.create({
       baseURL: deps.rhieConfig.baseUrl,
       timeout: deps.rhieConfig.timeoutMs,
@@ -48,11 +53,45 @@ export class VisitEncounterProcessor {
   }
 
   async processPendingVisitEncounters(batchSize: number): Promise<BatchResult> {
-    const rows = await this.deps.repository.findPendingVisitEncounters(batchSize);
+    return this.processPendingBatch(
+      batchSize,
+      (limit) => this.deps.repository.findPendingVisitEncounters(limit),
+      (clientId, date) => this.upload(clientId, date, 'VISIT_ENCOUNTER'),
+      'visit_encounter',
+    );
+  }
+
+  async processPendingETransferEncounters(batchSize: number): Promise<BatchResult> {
+    return this.processPendingBatch(
+      batchSize,
+      (limit) => this.deps.repository.findPendingETransferEncounters(limit),
+      (clientId, date) => this.upload(clientId, date, 'E_TRANSFER'),
+      'e_transfer',
+    );
+  }
+
+  /** Run visit uploads first, then E_TRANSFER (parent visit must be rhie_status=1 for fetch SQL). */
+  async processAllPendingEncounters(batchSize: number): Promise<BatchResult> {
+    const visit = await this.processPendingVisitEncounters(batchSize);
+    const transfer = await this.processPendingETransferEncounters(batchSize);
+    return {
+      processed: visit.processed + transfer.processed,
+      failed: visit.failed + transfer.failed,
+      skipped: visit.skipped + transfer.skipped,
+    };
+  }
+
+  private async processPendingBatch(
+    batchSize: number,
+    findPending: (limit: number) => Promise<Array<{ client_id: number; date: string }>>,
+    uploadFn: (clientId: number, date: string) => Promise<VisitUploadResult[]>,
+    eventPrefix: string,
+  ): Promise<BatchResult> {
+    const rows = await findPending(batchSize);
 
     this.deps.logger.debug(
-      { event: 'poll_records', pendingEncounters: rows.length, batchSize },
-      `Found ${rows.length} pending visit encounters`,
+      { event: `${eventPrefix}_poll_records`, pendingEncounters: rows.length, batchSize },
+      `Found ${rows.length} pending encounters`,
     );
 
     if (rows.length === 0) {
@@ -65,12 +104,9 @@ export class VisitEncounterProcessor {
 
     for (const row of rows) {
       try {
-        const results = await this.upload(
-          row.client_id,
-          row.date,
-          'VISIT_ENCOUNTER',
-        );
+        const results = await uploadFn(row.client_id, row.date);
 
+        // PHP batch echoes "success" even when upload returns [] (e.g. missing parent visit).
         if (results.length === 0) {
           skipped += 1;
         } else {
@@ -80,7 +116,7 @@ export class VisitEncounterProcessor {
         failed += 1;
         this.deps.logger.error(
           {
-            event: 'visit_upload_error',
+            event: `${eventPrefix}_upload_error`,
             clientId: row.client_id,
             date: row.date,
             facilityId: this.deps.facilityId,
@@ -95,29 +131,47 @@ export class VisitEncounterProcessor {
   }
 
   /**
-   * Port of UploadVisitEncounterController::upload() for VISIT_ENCOUNTER type.
+   * Port of UploadVisitEncounterController::upload() for VISIT_ENCOUNTER and E_TRANSFER.
    */
   async upload(
     clientId: number,
     date: string,
     type: 'VISIT_ENCOUNTER' | 'E_TRANSFER' | 'CONSULTATION_ENCOUNTER',
   ): Promise<VisitUploadResult[]> {
-    if (type !== 'VISIT_ENCOUNTER') {
+    if (type === 'CONSULTATION_ENCOUNTER') {
       throw new Error(`Unsupported encounter type: ${type}`);
     }
 
     this.deps.logger.debug(
       {
-        event: 'visit_upload_start',
+        event: 'encounter_upload_start',
         clientId,
         date,
         type,
         facilityId: this.deps.facilityId,
       },
-      `VISIT upload: client=${clientId} date=${date}`,
+      `Encounter upload: client=${clientId} date=${date} type=${type}`,
     );
 
-    const visits = await this.deps.repository.getVisitEncounterData(date, clientId);
+    const visits =
+      type === 'VISIT_ENCOUNTER'
+        ? await this.deps.repository.getVisitEncounterData(date, clientId)
+        : await this.deps.repository.getETransferEncounterData(date, clientId);
+
+    // PHP: empty $visits when parent VISIT_ENCOUNTER missing or rhie_status != 1 — no throw, no mark.
+    if (visits.length === 0) {
+      this.deps.logger.debug(
+        {
+          event: 'encounter_upload_no_rows',
+          clientId,
+          date,
+          type,
+        },
+        'No encounter rows returned from fetch SQL — upload skipped',
+      );
+      return [];
+    }
+
     const results: VisitUploadResult[] = [];
 
     for (const visit of visits) {
@@ -128,51 +182,89 @@ export class VisitEncounterProcessor {
         continue;
       }
 
-      const payload = this.deps.payloadBuilder.build(visit);
-
-      if (this.deps.config.executionMode === 'shadow') {
-        this.deps.logger.info(
-          {
-            event: 'shadow_payload_built',
-            clientId,
-            date,
-            encountId: visit.resource_encount_id,
-            payload: serializeVisitPayload(payload),
-          },
-          'Shadow mode — visit encounter upload skipped',
+      if (type === 'E_TRANSFER') {
+        results.push(
+          await this.uploadETransferRow(visit as ETransferEncounterDataRow, clientId, date),
         );
-
-        results.push({
-          endpoint: this.deps.rhieConfig.visitEncounterPath,
-          kind: 'visit',
-          encounter_id: payload.id,
-          upid: payload.subject.identifier.value,
-          response: { shadow: true },
-        });
-        continue;
+      } else {
+        results.push(await this.uploadVisitRow(visit as VisitEncounterDataRow, clientId, date));
       }
-
-      const uploadResult = await this.sendToHie(payload, 'visit');
-      results.push(this.toPhpResult(uploadResult));
-
-      // PHP marks uploaded unconditionally after send, regardless of HTTP status.
-      await this.deps.repository.markVisitUploaded(visit.resource_encount_id);
-
-      this.deps.logger.debug(
-        {
-          event: 'visit_marked_uploaded',
-          encountId: visit.resource_encount_id,
-          httpCode: uploadResult.httpCode,
-        },
-        'Visit encounter marked uploaded',
-      );
     }
 
     return results;
   }
 
+  private async uploadVisitRow(
+    visit: VisitEncounterDataRow,
+    clientId: number,
+    date: string,
+  ): Promise<VisitUploadResult> {
+    const payload = this.deps.payloadBuilder.build(visit);
+
+    if (this.deps.config.executionMode === 'shadow') {
+      this.deps.logger.info(
+        {
+          event: 'shadow_payload_built',
+          clientId,
+          date,
+          type: 'VISIT_ENCOUNTER',
+          encountId: visit.resource_encount_id,
+          payload: serializeVisitPayload(payload),
+        },
+        'Shadow mode — visit encounter upload skipped',
+      );
+
+      return {
+        endpoint: this.deps.rhieConfig.visitEncounterPath,
+        kind: 'visit',
+        encounter_id: payload.id,
+        upid: payload.subject.identifier.value,
+        response: { shadow: true },
+      };
+    }
+
+    const uploadResult = await this.sendToHie(payload, 'visit');
+    await this.deps.repository.markVisitUploaded(visit.resource_encount_id);
+    return this.toPhpResult(uploadResult);
+  }
+
+  private async uploadETransferRow(
+    visit: ETransferEncounterDataRow,
+    clientId: number,
+    date: string,
+  ): Promise<VisitUploadResult> {
+    const payload = this.deps.payloadBuilder.buildRef(visit, this.now);
+
+    if (this.deps.config.executionMode === 'shadow') {
+      this.deps.logger.info(
+        {
+          event: 'shadow_payload_built',
+          clientId,
+          date,
+          type: 'E_TRANSFER',
+          encountId: visit.resource_encount_id,
+          referenceEncountId: visit.reference_encount_id,
+          payload: serializeETransferPayload(payload),
+        },
+        'Shadow mode — E_TRANSFER upload skipped',
+      );
+
+      return {
+        endpoint: this.deps.rhieConfig.visitEncounterPath,
+        kind: 'referral',
+        encounter_id: payload.id,
+        upid: payload.subject.identifier.value,
+        response: { shadow: true },
+      };
+    }
+
+    const uploadResult = await this.sendToHie(payload, 'referral');
+    await this.deps.repository.markVisitUploaded(visit.resource_encount_id);
+    return this.toPhpResult(uploadResult);
+  }
+
   private async sendToHie(
-    payload: ReturnType<VisitPayloadBuilder['build']>,
+    payload: FhirVisitEncounterPayload | FhirETransferEncounterPayload,
     kind: 'visit' | 'referral',
   ): Promise<VisitEncounterUploadResult> {
     return uploadVisitEncounterOnce(

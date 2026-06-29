@@ -62,3 +62,35 @@ describe('phpDateC', () => {
     assert.match(result, /^\d{4}-\d{2}-\d{2}T/);
   });
 });
+
+describe('VisitPayloadBuilder E_TRANSFER (buildRefFHIRPayload)', () => {
+  const builder = new VisitPayloadBuilder();
+  const fixedNow = () => new Date('2026-06-24T15:00:00+02:00');
+
+  it('partOf references parent visit when fetch SQL returns reference_encount_id', () => {
+    const payload = builder.buildRef(
+      {
+        resource_encount_id: 'etrans-1',
+        reference_encount_id: 'visit-parent-uuid',
+        upid: '1234567890123456',
+        client_id: 1,
+        visit_date: '2026-06-24',
+        patient_name: 'Test',
+        type_display: 'TRANSFER_ENCOUNTER',
+        display: 'Transfer',
+        div_display: 'Transfer Encounter',
+        order_time: '2026-06-24 10:00:00',
+        practitioner_name: 'Dr',
+        practitioner_id: 'MS-PRAC-0025-001',
+        origin_facility_name: 'Origin HC',
+        destination_facility_name: 'Dest Hospital',
+        origin_location_id: 'FOSA001',
+      },
+      fixedNow,
+    );
+
+    assert.equal(payload.status, 'planned');
+    assert.equal(payload.partOf.reference, 'Encounter/visit-parent-uuid');
+    assert.equal(payload.hospitalization.destination.reference, 'Location/');
+  });
+});

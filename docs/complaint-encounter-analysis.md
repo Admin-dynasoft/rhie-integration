@@ -114,6 +114,17 @@ No dedicated PHP complaint batch exists. Node batch SQL combines:
 
 ---
 
-## Known PHP Quirk
+## Legacy PHP Bug — `Chief Complaintt` (Verified)
 
-The traches upload loop checks `$o['display'] === 'Chief Complaintt'` (typo with double-t), but `GetEncounterModel` returns `'Chief Complaint'`. **Complaints would never upload via that branch.** Node matches the SQL output `'Chief Complaint'` for intended behavior; documented in parity report.
+Repository-wide search confirms **`Chief Complaintt` is never produced** anywhere in PHP. It appears once, as a comparison operand in `rhie/controllers/traches/UploadEncounterController.php` line 793.
+
+All data sources emit `'Chief Complaint'`:
+
+- `GetEncounterModel::getComplaintEncounterData` — `'Chief Complaint' AS display`
+- `traches/GetEncounterModel.php` — identical SQL
+
+The traches upload branch is therefore **dead code**: the condition can never be true for rows returned by `getComplaintEncounterData`. Same file contains related typos (`Diagnosticc`, `Vital Signn`, …) with the same mismatch pattern.
+
+The committed (non-traches) `UploadEncounterController.php` has no complaint upload path at all.
+
+**Node implementation** matches `'Chief Complaint'` (SQL output). No change needed to replicate the typo — there is no original behavior to preserve because the typo is never emitted.

@@ -78,5 +78,5 @@ export function serializeComplaintPayload(
   return structuredClone(payload);
 }
 
-/** Display value from GetEncounterModel SQL — matches intended upload branch */
+/** Row display from GetEncounterModel SQL — never 'Chief Complaintt' (legacy dead-code typo in traches controller) */
 export const COMPLAINT_DISPLAY = 'Chief Complaint';

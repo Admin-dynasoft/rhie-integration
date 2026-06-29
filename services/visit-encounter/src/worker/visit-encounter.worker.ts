@@ -52,7 +52,7 @@ export class VisitEncounterWorker extends ModeAwareWorker {
       return { processed: 0, failed: 0, skipped: 0 };
     }
 
-    return this.processor.processPendingVisitEncounters(ctx.batchSize);
+    return this.processor.processAllPendingEncounters(ctx.batchSize);
   }
 }
 

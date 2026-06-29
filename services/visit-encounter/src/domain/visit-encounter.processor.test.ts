@@ -108,9 +108,80 @@ describe('VisitEncounterProcessor', () => {
   it('throws for unsupported encounter types', async () => {
     const processor = createProcessor({}, { executionMode: 'production' });
     await assert.rejects(
-      () => processor.upload(1, '2026-06-24', 'E_TRANSFER'),
+      () => processor.upload(1, '2026-06-24', 'CONSULTATION_ENCOUNTER'),
       /Unsupported encounter type/,
     );
+  });
+
+  it('E_TRANSFER with no parent visit rows skips upload and does not mark (PHP parity)', async () => {
+    const markVisitUploaded = mock.fn(async () => undefined);
+    const processor = createProcessor(
+      {
+        getETransferEncounterData: mock.fn(async () => []),
+        markVisitUploaded,
+      },
+      { executionMode: 'production' },
+    );
+
+    const results = await processor.upload(1, '2026-06-24', 'E_TRANSFER');
+    assert.equal(results.length, 0);
+    assert.equal(markVisitUploaded.mock.callCount(), 0);
+  });
+
+  it('E_TRANSFER shadow mode includes reference_encount_id when parent visit uploaded', async () => {
+    const markVisitUploaded = mock.fn(async () => undefined);
+    const processor = createProcessor(
+      {
+        getETransferEncounterData: mock.fn(async () => [
+          {
+            resource_encount_id: 'etrans-1',
+            reference_encount_id: 'visit-parent-1',
+            upid: '1234567890123456',
+            client_id: 1,
+            visit_date: '2026-06-24',
+            patient_name: 'Test',
+            type_display: 'TRANSFER_ENCOUNTER',
+            display: 'Transfer',
+            div_display: 'Transfer Encounter',
+            order_time: '2026-06-24 10:00:00',
+            practitioner_name: 'Dr',
+            practitioner_id: 'MS-PRAC-0025-001',
+            origin_facility_name: 'Origin HC',
+            destination_facility_name: 'Dest Hospital',
+            origin_location_id: 'F001',
+          },
+        ]),
+        markVisitUploaded,
+      },
+      { executionMode: 'shadow' },
+    );
+
+    const results = await processor.upload(1, '2026-06-24', 'E_TRANSFER');
+    assert.equal(results.length, 1);
+    assert.equal(results[0].kind, 'referral');
+    assert.equal(markVisitUploaded.mock.callCount(), 0);
+  });
+
+  it('processPendingETransferEncounters counts skipped when parent visit not uploaded', async () => {
+    const processor = createProcessor(
+      {
+        findPendingETransferEncounters: mock.fn(async () => [
+          {
+            client_id: 1,
+            upid: '1234567890123456',
+            date: '2026-06-24',
+            age: '1990-01-01',
+            resource_encount_id: 'etrans-1',
+          },
+        ]),
+        getETransferEncounterData: mock.fn(async () => []),
+      },
+      { executionMode: 'shadow' },
+    );
+
+    const result = await processor.processPendingETransferEncounters(50);
+    assert.equal(result.skipped, 1);
+    assert.equal(result.processed, 0);
   });
 
   it('processPendingVisitEncounters counts skipped when no visit rows returned', async () => {

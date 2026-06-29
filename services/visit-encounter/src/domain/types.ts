@@ -96,3 +96,58 @@ export interface VisitUploadResult {
   http_code?: number;
   response?: unknown;
 }
+
+export interface ETransferEncounterDataRow {
+  resource_encount_id: string;
+  reference_encount_id: string;
+  upid: string;
+  client_id: number;
+  visit_date: string;
+  patient_name: string;
+  type_display: string;
+  display: string;
+  div_display: string;
+  order_time: string;
+  practitioner_name: string;
+  practitioner_id: string;
+  origin_facility_name: string;
+  destination_facility_name: string;
+  origin_location_id: string;
+  /** Not selected by PHP SQL — absent at runtime */
+  destination_location_id?: string;
+}
+
+export interface FhirETransferEncounterPayload extends Omit<FhirVisitEncounterPayload, 'period' | 'location'> {
+  status: string;
+  period: {
+    start: string;
+    end: string;
+  };
+  location: Array<{
+    location: {
+      reference: string;
+      type: string;
+      identifier: {
+        value: string;
+      };
+      display: string;
+    };
+  }>;
+  hospitalization: {
+    origin: {
+      reference: string;
+      type: string;
+      identifier: { value: string };
+      display: string;
+    };
+    destination: {
+      reference: string;
+      type: string;
+      identifier: { value: string };
+      display: string;
+    };
+  };
+  partOf: {
+    reference: string;
+  };
+}

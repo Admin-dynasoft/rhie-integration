@@ -2,7 +2,7 @@ export { VisitEncounterWorker, visitEncounterWorkerFactory } from './worker/visi
 export {
   VisitEncounterProcessor,
   type VisitEncounterService,
-  type VisitEncounterServiceDeps,
+  type VisitEncounterProcessorDeps,
 } from './domain/visit-encounter.processor.js';
-export { VisitPayloadBuilder, phpDateC } from './domain/visit-payload.builder.js';
+export { VisitPayloadBuilder, phpDateC, phpNowDateC } from './domain/visit-payload.builder.js';
 export { VisitEncounterRepository } from './repository/visit-encounter.repository.js';

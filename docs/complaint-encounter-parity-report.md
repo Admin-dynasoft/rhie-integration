@@ -21,7 +21,7 @@ Audit comparing the PHP reference implementation to `@rhie/service-observation` 
 | Retry logic | ✅ Parity | None |
 | Mark on success only | ✅ Parity | Unlike visit encounter |
 | UPID filter | ✅ Parity | @rhie/shared |
-| Display match | ⚠️ Corrected | PHP traches typo 'Chief Complaintt' → 'Chief Complaint' |
+| Display match | ✅ Parity | Legacy PHP typo verified — never produced; Node matches SQL output |
 | Batch selection SQL | ➕ Node-derived | No dedicated PHP complaint batch |
 | Shadow mode | ➕ Node extension | Safe rollout |
 
@@ -96,15 +96,24 @@ Verified by `complaint-payload.builder.test.ts`.
 
 ---
 
-## Display Match Correction
+## Legacy PHP Bug — `Chief Complaintt` (Verified)
 
-| Source | display value | Upload triggered? |
-|--------|---------------|-------------------|
-| GetEncounterModel SQL | `'Chief Complaint'` | Intended: Yes |
-| traches uploadObservations | checks `'Chief Complaintt'` | **Never matches SQL** |
-| Node implementation | checks `'Chief Complaint'` | Yes (matches SQL) |
+Full-repository search (`rg 'Complaintt|complaintt' rhie/`) on 2026-06-29:
 
-Node implements intended behavior aligned with SQL output and `buildComplaintObservation()`.
+| Location | Role | Produces `Chief Complaintt`? |
+|----------|------|------------------------------|
+| `rhie/controllers/traches/UploadEncounterController.php:793` | Comparison only: `$o['display'] === 'Chief Complaintt'` | No |
+| `rhie/models/GetEncounterModel.php:160-161` | SQL literal `'Chief Complaint' AS display` | No — produces `Chief Complaint` |
+| `rhie/models/traches/GetEncounterModel.php:160-161` | Same SQL | No — produces `Chief Complaint` |
+| `buildComplaintObservation()` LOINC coding | `"display" => "Chief Complaints"` (plural) | No — different field, not row `display` |
+| `buildObservation()` | `strtolower(...) === 'chief complaint'` | No — never called for complaint batch path |
+| Committed `UploadEncounterController.php` | No complaint upload branch | N/A |
+
+**Conclusion:** No PHP code ever assigns or returns `Chief Complaintt` as a row `display` value. The traches comparison is **dead code** — a copy-paste typo alongside similar typos (`Diagnosticc`, `Vital Signn`, etc.) that also do not match SQL output.
+
+**Node behavior:** Matches the data layer (`'Chief Complaint'` from `getComplaintEncounterData`). This is parity with what PHP *feeds* into the upload loop, not with the broken branch condition.
+
+**If production ever relied on complaint uploads:** They would not have worked via the traches controller path; any working deployment would require a hotfix, fork, or direct API use not present in this repository.
 
 ---
 
@@ -175,4 +184,4 @@ rhie:
 
 ## Verdict
 
-Complaint Encounter Upload is implemented in `@rhie/service-observation` with full parity to the intended PHP behavior. The only deliberate correction is the display match typo in traches PHP. Status updates correctly gate on HTTP success, matching observation upload semantics (not visit upload semantics).
+Complaint Encounter Upload in `@rhie/service-observation` achieves **full behavioral parity** with the PHP data layer and `buildComplaintObservation()`. The traches `Chief Complaintt` check is a verified legacy bug (never produced). Status updates correctly gate on HTTP success.

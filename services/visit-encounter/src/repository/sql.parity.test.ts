@@ -2,7 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SQL_FIND_PENDING_VISIT_ENCOUNTERS,
+  SQL_FIND_PENDING_E_TRANSFER_ENCOUNTERS,
   SQL_GET_VISIT_ENCOUNTER_DATA,
+  SQL_GET_E_TRANSFER_ENCOUNTER_DATA,
   SQL_MARK_VISIT_UPLOADED,
 } from './sql.js';
 
@@ -67,5 +69,41 @@ describe('SQL parity with PHP Visit Encounter Upload', () => {
       UPDATE encounter_main SET rhie_status = 1, rhie_uploaded_at = NOW() WHERE encount_id = ?
     `;
     assert.equal(normalizeSql(SQL_MARK_VISIT_UPLOADED), normalizeSql(php));
+  });
+
+  it('pending E_TRANSFER query matches upload_visit_ref_encounters_batch.php', () => {
+    const php = `
+      SELECT DISTINCT
+        em.client_id,
+        up.upid,
+        em.date,
+        p.age,
+        em.encount_id AS resource_encount_id
+      FROM encounter_main em
+      LEFT JOIN upid_patients up ON em.client_id = up.client_id
+      LEFT JOIN patients p ON em.client_id = p.patient_id
+      WHERE type IN ('E_TRANSFER')
+      AND em.rhie_status = 2 AND up.status = 2
+      AND up.upid NOT LIKE 'UP%'
+      AND (up.document_number IS NOT NULL OR up.document_number NOT LIKE 'TP-%')
+      AND p.age IS NOT NULL
+      AND p.age REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      ORDER BY date ASC
+    `;
+    const nodeWithoutLimit = SQL_FIND_PENDING_E_TRANSFER_ENCOUNTERS.replace(/\sLIMIT \?\s*$/i, '');
+    assert.equal(normalizeSql(nodeWithoutLimit), normalizeSql(php));
+  });
+
+  it('E_TRANSFER fetch requires parent VISIT_ENCOUNTER with rhie_status = 1', () => {
+    assert.match(
+      normalizeSql(SQL_GET_E_TRANSFER_ENCOUNTER_DATA),
+      /ve\.type = 'visit_encounter'/,
+    );
+    assert.match(normalizeSql(SQL_GET_E_TRANSFER_ENCOUNTER_DATA), /ve\.rhie_status = 1/);
+    assert.match(normalizeSql(SQL_GET_E_TRANSFER_ENCOUNTER_DATA), /inner join encounter_main ve/);
+  });
+
+  it('batch selection does NOT require parent visit (only fetch SQL does)', () => {
+    assert.doesNotMatch(normalizeSql(SQL_FIND_PENDING_E_TRANSFER_ENCOUNTERS), /visit_encounter/);
   });
 });
