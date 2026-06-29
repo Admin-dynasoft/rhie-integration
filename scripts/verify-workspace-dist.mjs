@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,14 +30,19 @@ for (const dir of packageDirs) {
     continue;
   }
 
-  const distEntry = join(dir, 'dist', 'index.js');
-  if (!existsSync(distEntry)) {
-    missing.push(`${pkg.name} (${distEntry})`);
+  const distJs = join(dir, 'dist', 'index.js');
+  const distTypes = join(dir, 'dist', 'index.d.ts');
+
+  if (!existsSync(distJs)) {
+    missing.push(`${pkg.name} (${distJs})`);
+  }
+  if (!existsSync(distTypes)) {
+    missing.push(`${pkg.name} (${distTypes})`);
   }
 }
 
 if (missing.length > 0) {
-  console.error('Workspace build verification failed. Missing dist/index.js for:');
+  console.error('Workspace build verification failed. Missing build outputs for:');
   for (const entry of missing) {
     console.error(`  - ${entry}`);
   }
@@ -44,4 +50,23 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-console.log(`Verified ${packageDirs.length} workspace packages have dist/index.js`);
+try {
+  const configRequire = createRequire(join(root, 'packages/config/package.json'));
+  const yamlPkgJson = configRequire.resolve('yaml/package.json');
+  const yamlDist = join(dirname(yamlPkgJson), 'dist', 'index.js');
+  if (!existsSync(yamlDist)) {
+    throw new Error(`yaml dist/index.js missing at ${yamlDist}`);
+  }
+} catch (error) {
+  console.error(
+    'Dependency check failed: the yaml package is not usable from @rhie/config.\n' +
+      `${error instanceof Error ? error.message : error}\n` +
+      'Run "npm install" from the repository root (postinstall restores yaml if dist/ was deleted).',
+  );
+  process.exit(1);
+}
+
+console.log(
+  `Verified ${packageDirs.length} workspace packages emit dist/index.js and dist/index.d.ts`,
+);
+console.log('Verified yaml dependency is resolvable from @rhie/config');

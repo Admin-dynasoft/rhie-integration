@@ -9,6 +9,7 @@
     "services/*"
   ],
   "scripts": {
+    "postinstall": "node scripts/ensure-yaml-dist.mjs",
     "build": "tsc -b && node scripts/verify-workspace-dist.mjs",
     "clean": "find packages apps services -name tsconfig.tsbuildinfo -delete && rm -rf packages/*/dist apps/*/dist services/*/dist",
     "verify:build": "npm run clean && npm run build",
@@ -30,6 +31,9 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "yaml": "2.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
