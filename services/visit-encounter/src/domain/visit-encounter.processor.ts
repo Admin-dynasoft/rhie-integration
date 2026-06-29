@@ -25,6 +25,8 @@ export interface VisitEncounterProcessorDeps {
   facilityId?: string;
   facilityCode?: string;
   now?: () => Date;
+  /** Override for unit tests; defaults to uploadVisitEncounterOnce. */
+  uploadVisitEncounter?: typeof uploadVisitEncounterOnce;
 }
 
 export type VisitEncounterService = VisitEncounterProcessor;
@@ -267,7 +269,9 @@ export class VisitEncounterProcessor {
     payload: FhirVisitEncounterPayload | FhirETransferEncounterPayload,
     kind: 'visit' | 'referral',
   ): Promise<VisitEncounterUploadResult> {
-    return uploadVisitEncounterOnce(
+    const upload =
+      this.deps.uploadVisitEncounter ?? uploadVisitEncounterOnce;
+    return upload(
       this.http,
       this.authProvider,
       this.deps.rhieConfig,

@@ -174,7 +174,7 @@ These exist in PHP `UploadVisitEncounterController` but are handled by other bat
 
 | Type | PHP Batch | Node Service |
 |------|-----------|--------------|
-| E_TRANSFER | upload_visit_ref_encounters_batch.php | transfer-encounter (stub) |
+| E_TRANSFER | upload_visit_ref_encounters_batch.php | `visit-encounter` (same worker, second pass) |
 | CONSULTATION_ENCOUNTER | upload_consult_encounters_batch.php | Not implemented |
 | Observations | UploadEncounterController | observation (stub) |
 
@@ -187,8 +187,10 @@ These exist in PHP `UploadVisitEncounterController` but are handled by other bat
 | `sql.parity.test.ts` | All 3 SQL statements vs PHP |
 | `visit-payload.builder.test.ts` | Full FHIR payload + date formatting |
 | `visit-encounter.processor.test.ts` | UPID skip, shadow mode, unsupported type, batch counting |
+| `visit-encounter.processor.production.test.ts` | Unconditional mark-after-send, visit-before-transfer order |
+| `visit-encounter.rhie.test.ts` | Endpoint selection `/shr/Encounter` vs `/transfer` |
 
-**Result:** 11/11 tests passing.
+**Result:** 25/25 tests passing (VISIT_ENCOUNTER + E_TRANSFER).
 
 ---
 
